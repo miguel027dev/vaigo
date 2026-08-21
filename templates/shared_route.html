@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F7F8FC">
+  <script>(function(){try{var k='vaigo.theme.mode.v60',legacy=localStorage.getItem('vaigo.theme.mode.v57')||localStorage.getItem('vaigo.theme.mode.v56')||localStorage.getItem('vaigo.theme.v55'),m=localStorage.getItem(k)||((legacy==='black')?'black':'light');document.documentElement.dataset.vaigoTheme=m==='black'?'black':'light';document.documentElement.dataset.vaigoThemeMode=m==='black'?'black':'light'}catch(_){document.documentElement.dataset.vaigoTheme='light';document.documentElement.dataset.vaigoThemeMode='light'}})();</script>
+  <title>Rota compartilhada · VAIGO</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.28.1/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.28.1/mapbox-gl.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='vaigo-theme-v56.css') }}?v=56">
+  <style>
+    *{box-sizing:border-box}html,body{height:100%;margin:0;background:#07090b;color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:hidden}.share-app{position:relative;height:100dvh;background:#0a0d11}.map{position:absolute;inset:0}.veil{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(6,7,9,.34),transparent 22%,transparent 68%,rgba(6,7,9,.32));z-index:2}.top{position:absolute;max-width:980px;margin-inline:auto;z-index:5;top:max(12px,env(safe-area-inset-top));left:12px;right:12px;display:flex;justify-content:space-between;align-items:center}.pill{height:42px;padding:0 14px;border-radius:15px;border:1px solid rgba(255,255,255,.10);background:rgba(10,12,15,.78);backdrop-filter:blur(24px);display:flex;align-items:center;gap:9px;box-shadow:0 12px 30px rgba(0,0,0,.18)}.pill b{font-size:14px;letter-spacing:-.4px}.pill span{font-size:9px;color:#9ba2ad}.dot{width:8px;height:8px;border-radius:50%;background:#5B5CE2;box-shadow:0 0 0 5px rgba(91,92,226,.12)}.bottom{position:absolute;max-width:680px;margin-inline:auto;z-index:5;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:24px;background:rgba(11,13,16,.90);backdrop-filter:blur(28px);box-shadow:0 -14px 44px rgba(0,0,0,.30)}.route-label{padding:2px 4px 10px}.route-label small{display:block;color:#858d98;font-size:9px;text-transform:uppercase;letter-spacing:.09em;font-weight:800}.route-label b{display:block;margin-top:4px;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.use{width:100%;height:50px;border:0;border-radius:16px;background:linear-gradient(135deg,#706DF2,#5B5CE2);color:#fff;font-size:13px;font-weight:900}.disabled{opacity:.55;pointer-events:none}.mapboxgl-ctrl-logo{transform:scale(.72);transform-origin:left bottom}.mapboxgl-ctrl-bottom-right{bottom:95px}.mapboxgl-ctrl-attrib{font-size:8px!important;background:rgba(8,10,12,.7)!important;color:#aaa!important}
+
+    html[data-vaigo-theme="light"] body{background:#EEF1F6;color:#202536}html[data-vaigo-theme="light"] .share-app{background:#EEF1F6}html[data-vaigo-theme="light"] .veil{background:linear-gradient(180deg,rgba(245,247,252,.13),transparent 22%,transparent 70%,rgba(245,247,252,.10))}html[data-vaigo-theme="light"] .pill{border-color:#E0E4EC;background:rgba(255,255,255,.95);box-shadow:0 12px 30px rgba(35,42,78,.10)}html[data-vaigo-theme="light"] .pill span{color:#7B8597}html[data-vaigo-theme="light"] .bottom{border-color:#DDE2EB;background:rgba(255,255,255,.985);box-shadow:0 -12px 42px rgba(35,42,78,.13)}html[data-vaigo-theme="light"] .route-label small{color:#7B8597}html[data-vaigo-theme="light"] .mapboxgl-ctrl-attrib{background:rgba(255,255,255,.82)!important;color:#657084!important}
+  </style>
+</head>
+<body>
+<div class="share-app">
+  <div id="map" class="map"></div><div class="veil"></div>
+  <div class="top"><div class="pill"><span class="dot"></span><div><b>VAIGO</b><span>rota compartilhada</span></div></div></div>
+  <div class="bottom"><div class="route-label"><small>Destino</small><b>{{ share['destination_label'] or 'Rota compartilhada' }}</b></div><button class="use {% if not mapbox_ready %}disabled{% endif %}" onclick="location.href={{ url_for('use_shared_route',token=share['token'])|tojson }}">Usar esta rota</button></div>
+</div>
+<script>
+const TOKEN={{ mapbox_token|tojson }},STYLE={{ mapbox_style|tojson }},NIGHT={{ mapbox_style_night|tojson }},ROUTE={{ route|tojson }};
+if(TOKEN){
+  mapboxgl.accessToken=TOKEN;let fitted=false;
+  const chosen=()=>document.documentElement.dataset.vaigoTheme==='black'?(NIGHT||STYLE):STYLE;
+  const map=new mapboxgl.Map({container:'map',style:chosen(),center:[0,0],zoom:2,attributionControl:true,cooperativeGestures:false});
+  function install(){if(!map.getSource('route'))map.addSource('route',{type:'geojson',data:{type:'Feature',properties:{},geometry:ROUTE.geometry}});if(!map.getLayer('route-shadow'))map.addLayer({id:'route-shadow',type:'line',source:'route',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':document.documentElement.dataset.vaigoTheme==='black'?'#07090b':'#ffffff','line-width':11,'line-opacity':.72}});if(!map.getLayer('route-line'))map.addLayer({id:'route-line',type:'line',source:'route',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#5B5CE2','line-width':7,'line-opacity':.98}});if(!fitted){const b=new mapboxgl.LngLatBounds();(ROUTE.geometry?.coordinates||[]).forEach(c=>b.extend(c));if(!b.isEmpty())map.fitBounds(b,{padding:{top:80,bottom:150,left:34,right:34},maxZoom:15.8,duration:0});fitted=true}}
+  map.on('style.load',install);
+  window.addEventListener('vaigo:themechange',()=>{const uri=chosen();if(uri)map.setStyle(uri,{diff:true})});
+}
+</script>
+<script src="{{ url_for('static', filename='vaigo-theme-v60.js') }}?v=60"></script>
+</body>
+</html>

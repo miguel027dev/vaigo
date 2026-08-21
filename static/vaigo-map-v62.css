@@ -1,0 +1,119 @@
+/* ============================================================
+   VAIGO V62 — desktop-left planner + responsive control geometry
+   Does not change routing/GPS behavior; visual/interaction geometry only.
+   ============================================================ */
+:root{
+  --v62-desktop-left:24px;
+  --v62-desktop-bottom:34px;
+  --v62-desktop-panel:438px;
+  --v62-planner-collapsed-h:214px;
+}
+
+/* Compact legal attribution: keep required credits without a large text strip. */
+.mapboxgl-ctrl-bottom-right{right:max(8px,env(safe-area-inset-right))!important;bottom:max(7px,env(safe-area-inset-bottom))!important;z-index:8!important}
+.mapboxgl-ctrl-attrib.mapboxgl-compact{margin:0!important;border:1px solid rgba(210,216,226,.82)!important;border-radius:10px!important;background:rgba(255,255,255,.88)!important;box-shadow:0 6px 18px rgba(29,36,70,.08)!important}
+.mapboxgl-ctrl-attrib-button{width:26px!important;height:26px!important}
+.mapboxgl-ctrl-bottom-left{z-index:8!important}
+.mapboxgl-ctrl-logo{opacity:.68!important;transform:scale(.70)!important}
+
+/* Controls feel intentionally aligned instead of floating at unrelated offsets. */
+.options-btn,.map-tools .map-btn,.floating-locate{outline:none!important}
+.options-btn:focus-visible,.map-tools .map-btn:focus-visible,.floating-locate:focus-visible,.nav-stack-btn:focus-visible{outline:3px solid rgba(91,92,226,.18)!important;outline-offset:2px!important}
+
+@media (min-width:1101px){
+  /* Main planning card: bottom-left, just above Mapbox branding. */
+  body:not(.body-nav) .ws-app .sheet{
+    left:var(--v62-desktop-left)!important;
+    right:auto!important;
+    bottom:var(--v62-desktop-bottom)!important;
+    width:var(--v62-desktop-panel)!important;
+    max-height:min(76dvh,680px)!important;
+    transform:none!important;
+    border-radius:27px!important;
+    padding:9px 11px 11px!important;
+    box-shadow:0 20px 62px rgba(31,38,75,.15),0 3px 12px rgba(31,38,75,.06)!important;
+  }
+  body:not(.body-nav) .ws-app .sheet.sheet-collapsed{transform:none!important}
+  body:not(.body-nav) .ws-app .sheet.sheet-dragging{transform:translateY(var(--planner-drag-y,0px))!important}
+  body:not(.body-nav) .ws-app .sheet.hidden,
+  body:not(.body-nav) .ws-app .sheet.hidden.sheet-collapsed{transform:translateY(calc(100% + 70px))!important}
+
+  .planner-heading{padding-inline:3px!important}
+  .planner-presets{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important;overflow:visible!important}
+  .planner-preset{width:auto!important;min-width:0!important;max-width:none!important;height:47px!important;padding:0 8px!important;grid-template-columns:30px minmax(0,1fr)!important;gap:6px!important}
+  .planner-preset-icon{width:29px!important;height:29px!important}
+  .planner-preset b{font-size:9px!important}.planner-preset small{font-size:6.2px!important;max-width:78px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  .planner-search-row{grid-template-columns:minmax(0,1fr) 58px!important;gap:7px!important}
+  .planner-search-card.search-card{height:58px!important;min-height:58px!important}.planner-adjust-btn{width:58px!important;min-width:58px!important;height:58px!important}
+
+  /* Recenter/calibrate button directly above the planner, same left edge. */
+  body:not(.body-nav) .ws-app .floating-locate{
+    left:var(--v62-desktop-left)!important;
+    right:auto!important;
+    bottom:calc(var(--v62-desktop-bottom) + var(--v62-planner-collapsed-h) + 10px)!important;
+    width:48px!important;height:48px!important;border-radius:16px!important;
+    opacity:1!important;pointer-events:auto!important;
+  }
+  /* Keep this control visible whether the planner is collapsed or expanded. */
+  body:not(.body-nav) .ws-app:has(.sheet:not(.hidden)) .floating-locate{opacity:1!important;pointer-events:auto!important;transform:none!important}
+
+  /* Keep secondary map actions together on the right. */
+  .header{right:16px!important;top:16px!important}.map-tools{right:16px!important;top:72px!important;gap:7px!important}
+  .options-btn{width:46px!important;height:46px!important}.map-tools .map-btn{width:44px!important;height:44px!important}
+
+  /* Navigation HUD follows the same desktop-left grammar. */
+  .body-nav .ws-app #activeNav.nav-panel.nav-minimal{
+    left:var(--v62-desktop-left)!important;right:auto!important;width:520px!important;bottom:18px!important;
+    transform:translateY(calc(100% + 62px))!important;
+  }
+  .body-nav .ws-app #activeNav.nav-panel.nav-minimal.show{transform:none!important}
+  .body-nav .nav-control-stack{
+    left:var(--v62-desktop-left)!important;right:auto!important;
+    bottom:196px!important;flex-direction:row!important;gap:7px!important;
+  }
+  .body-nav .nav-control-stack .nav-stack-btn{width:44px!important;height:44px!important;border-radius:14px!important}
+  .body-nav .nav-audio-toggle{left:220px!important;right:auto!important;bottom:196px!important;width:44px!important;height:44px!important;border-radius:14px!important}
+  .body-nav .floating-speedo{left:274px!important;right:auto!important;bottom:188px!important}
+
+  /* Mapbox logo lives under the card, not behind it; credits stay compact right. */
+  .mapboxgl-ctrl-bottom-left{left:var(--v62-desktop-left)!important;bottom:5px!important}
+}
+
+/* Laptop: left placement still works, but panel narrows slightly. */
+@media (min-width:900px) and (max-width:1100px){
+  body:not(.body-nav) .ws-app .sheet{left:18px!important;right:auto!important;bottom:28px!important;width:410px!important;transform:none!important}
+  body:not(.body-nav) .ws-app .sheet.sheet-collapsed{transform:none!important}
+  body:not(.body-nav) .ws-app .sheet.sheet-dragging{transform:translateY(var(--planner-drag-y,0px))!important}
+  body:not(.body-nav) .ws-app .floating-locate{left:18px!important;right:auto!important;bottom:calc(28px + var(--planner-collapsed-h) + 14px)!important}
+  .planner-preset{width:124px!important;min-width:124px!important;max-width:124px!important}
+  .mapboxgl-ctrl-bottom-left{left:18px!important}
+}
+
+/* Mobile remains centered and safe-area aware. Tighten the only collision-prone pieces. */
+@media (max-width:699px){
+  .mapboxgl-ctrl-logo{transform:scale(.64)!important;opacity:.62!important}
+  .mapboxgl-ctrl-bottom-right{bottom:4px!important;right:5px!important}
+  .mapboxgl-ctrl-attrib-button{width:24px!important;height:24px!important}
+  body:not(.body-nav) .ws-app .floating-locate{left:var(--v60-safe-left)!important;right:auto!important}
+  .planner-presets{scroll-padding-inline:2px!important}
+}
+
+@media (max-width:430px){
+  .planner-heading{padding-bottom:3px!important}.planner-expand-hint{font-size:6.5px!important}
+  .map-tools{right:8px!important}.header{right:8px!important}
+}
+
+/* Black mode uses the same geometry and compact attribution. */
+html[data-vaigo-theme="black"] .mapboxgl-ctrl-attrib.mapboxgl-compact{background:rgba(13,15,20,.86)!important;border-color:#2B303A!important;box-shadow:0 8px 22px rgba(0,0,0,.28)!important}
+
+@media (prefers-reduced-motion:reduce){.options-btn,.map-tools .map-btn,.floating-locate,.ws-app .sheet{transition:none!important}}
+
+/* Desktop navigation cascade lock against legacy !important geometry. */
+@media (min-width:1101px){
+  html[data-vaigo-theme] body.body-nav .ws-app #activeNav.nav-panel.nav-minimal{
+    left:var(--v62-desktop-left)!important;right:auto!important;width:520px!important;bottom:18px!important;
+    transform:translateY(calc(100% + 62px))!important;
+  }
+  html[data-vaigo-theme] body.body-nav .ws-app #activeNav.nav-panel.nav-minimal.show{transform:none!important}
+  html[data-vaigo-theme] body.body-nav .nav-control-stack{left:var(--v62-desktop-left)!important;right:auto!important;bottom:196px!important;flex-direction:row!important}
+}

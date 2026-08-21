@@ -1,0 +1,55 @@
+/* VAIGO V65 — compact mobile free-map indicator.
+   Scope: only the "Mapa livre" chip shown after the user drags the map during navigation. */
+
+@media (max-width: 899px){
+  body.body-nav .nav-map-mode.show{
+    left:10px!important;
+    right:auto!important;
+    top:max(128px,calc(env(safe-area-inset-top) + 126px))!important;
+    width:max-content!important;
+    max-width:132px!important;
+    min-width:0!important;
+    min-height:32px!important;
+    padding:7px 10px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:6px!important;
+    border-radius:999px!important;
+    line-height:1!important;
+    box-shadow:0 8px 22px rgba(37,43,75,.10)!important;
+    backdrop-filter:blur(16px)!important;
+    -webkit-backdrop-filter:blur(16px)!important;
+  }
+  body.body-nav .nav-map-mode.show>svg{
+    width:13px!important;
+    height:13px!important;
+    min-width:13px!important;
+    flex:0 0 13px!important;
+  }
+  body.body-nav .nav-map-mode.show>span{
+    display:flex!important;
+    align-items:center!important;
+    min-width:0!important;
+  }
+  body.body-nav .nav-map-mode.show b{
+    display:block!important;
+    margin:0!important;
+    font-size:9px!important;
+    font-weight:900!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+  }
+  body.body-nav .nav-map-mode.show small{
+    display:none!important;
+  }
+}
+
+@media (max-width: 360px){
+  body.body-nav .nav-map-mode.show{
+    left:8px!important;
+    max-width:120px!important;
+    min-height:30px!important;
+    padding:6px 9px!important;
+  }
+}

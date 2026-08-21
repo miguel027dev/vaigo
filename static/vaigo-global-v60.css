@@ -1,0 +1,19 @@
+/* VAIGO V60 — global interaction/accessibility guardrails */
+:root{--v60-focus:rgba(91,92,226,.28)}
+html{-webkit-text-size-adjust:100%}
+button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
+button,a{touch-action:manipulation}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--v60-focus)!important;outline-offset:2px!important}
+.vaigo-theme-options{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.vaigo-theme-option{min-height:42px!important}
+html[data-vaigo-theme="light"] body{color-scheme:light}
+html[data-vaigo-theme="black"] body{color-scheme:dark}
+@media(pointer:coarse){button,.btn,a.btn{min-height:42px}}
+@media(max-width:360px){.container,.nav{max-width:100%!important}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important}}
+
+/* Touch targets: keep compact visuals, but never ship tiny controls on phones/tablets. */
+@media (pointer:coarse){
+  button,.btn,a.btn{min-height:42px!important}
+  .sheet-close,.password-toggle,.prefs-close,.safety-close,.row-btn,.nav-recalc-btn{min-width:42px!important;min-height:42px!important}
+}

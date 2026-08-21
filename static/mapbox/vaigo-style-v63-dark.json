@@ -1,0 +1,31 @@
+{
+  "version": 8,
+  "name": "VAIGO V63 Dark",
+  "metadata": {
+    "vaigo:version": "63",
+    "vaigo:purpose": "Production dark navigation map",
+    "mapbox:autocomposite": false
+  },
+  "center": [-46.6333, -23.5505],
+  "zoom": 12,
+  "sources": {
+    "composite": {"type": "vector", "url": "mapbox://mapbox.mapbox-streets-v8"}
+  },
+  "sprite": "mapbox://sprites/mapbox/dark-v11",
+  "glyphs": "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
+  "layers": [
+    {"id": "vaigo-background", "type": "background", "paint": {"background-color": "#0F1218"}},
+    {"id": "vaigo-landuse", "type": "fill", "source": "composite", "source-layer": "landuse", "paint": {"fill-color": ["match", ["get", "class"], "park", "#142019", "pitch", "#171D18", "#151820"], "fill-opacity": 0.8}},
+    {"id": "vaigo-water", "type": "fill", "source": "composite", "source-layer": "water", "paint": {"fill-color": "#152433"}},
+    {"id": "vaigo-waterway", "type": "line", "source": "composite", "source-layer": "waterway", "paint": {"line-color": "#1D3346", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.4, 14, 1.2]}},
+    {"id": "vaigo-buildings", "type": "fill", "source": "composite", "source-layer": "building", "minzoom": 13, "paint": {"fill-color": "#1C2028", "fill-opacity": 0.9, "fill-outline-color": "#242A34"}},
+    {"id": "vaigo-road-local-casing", "type": "line", "source": "composite", "source-layer": "road", "filter": ["match", ["get", "class"], ["street", "street_limited", "service", "path"], true, false], "layout": {"line-cap": "round", "line-join": "round"}, "paint": {"line-color": "#181C23", "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.5, 14, 3.2, 18, 15]}},
+    {"id": "vaigo-road-local", "type": "line", "source": "composite", "source-layer": "road", "filter": ["match", ["get", "class"], ["street", "street_limited", "service", "path"], true, false], "layout": {"line-cap": "round", "line-join": "round"}, "paint": {"line-color": "#252A33", "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.25, 14, 2.2, 18, 12]}},
+    {"id": "vaigo-road-main-casing", "type": "line", "source": "composite", "source-layer": "road", "filter": ["match", ["get", "class"], ["primary", "secondary", "tertiary", "trunk", "motorway"], true, false], "layout": {"line-cap": "round", "line-join": "round"}, "paint": {"line-color": "#181C23", "line-width": ["interpolate", ["linear"], ["zoom"], 6, 0.8, 12, 2.6, 16, 10, 19, 24]}},
+    {"id": "vaigo-road-main", "type": "line", "source": "composite", "source-layer": "road", "filter": ["match", ["get", "class"], ["primary", "secondary", "tertiary", "trunk", "motorway"], true, false], "layout": {"line-cap": "round", "line-join": "round"}, "paint": {"line-color": ["match", ["get", "class"], "motorway", "#323846", "trunk", "#303642", "#2B303A"], "line-width": ["interpolate", ["linear"], ["zoom"], 6, 0.5, 12, 1.8, 16, 7.5, 19, 20]}},
+    {"id": "vaigo-admin", "type": "line", "source": "composite", "source-layer": "admin", "filter": ["<=", ["get", "admin_level"], 4], "paint": {"line-color": "#343A46", "line-width": 1, "line-dasharray": [2, 2], "line-opacity": 0.7}},
+    {"id": "vaigo-road-label", "type": "symbol", "source": "composite", "source-layer": "road_label", "minzoom": 12, "layout": {"symbol-placement": "line", "text-field": ["coalesce", ["get", "name_pt"], ["get", "name"]], "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"], "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10, 17, 13]}, "paint": {"text-color": "#9CA4B1", "text-halo-color": "#151820", "text-halo-width": 1.4}},
+    {"id": "vaigo-place-label", "type": "symbol", "source": "composite", "source-layer": "place_label", "layout": {"text-field": ["coalesce", ["get", "name_pt"], ["get", "name"]], "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"], "text-size": ["interpolate", ["linear"], ["zoom"], 5, 11, 12, 16, 16, 19]}, "paint": {"text-color": "#C0C6D1", "text-halo-color": "#0F1218", "text-halo-width": 1.6}},
+    {"id": "vaigo-poi-label", "type": "symbol", "source": "composite", "source-layer": "poi_label", "minzoom": 14, "layout": {"text-field": ["coalesce", ["get", "name_pt"], ["get", "name"]], "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"], "text-size": 10, "text-max-width": 8}, "paint": {"text-color": "#89919F", "text-halo-color": "#11141B", "text-halo-width": 1.4}}
+  ]
+}

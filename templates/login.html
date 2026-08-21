@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Entrar · VAIGO{% endblock %}
+{% block legacy_map_assets %}{% endblock %}
+{% block head %}{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-entry-v63.css') }}?v=63">{% endblock %}
+{% block content %}
+<div class="sparker-entry" data-auth-page="login">
+  <button type="button" class="auth-theme-toggle" data-vaigo-theme-toggle aria-label="Alternar entre White e Black" aria-pressed="false"><i data-lucide="moon" width="16"></i><span data-vaigo-theme-label>Usar Black</span></button>
+
+  <div class="sparker-splash" aria-hidden="true">
+    <div class="splash-center"><img class="splash-mark" src="{{ url_for('static', filename='vaigo-mark.svg') }}" alt=""><div class="splash-word">VAIGO</div></div>
+  </div>
+
+  <main class="v63-entry-shell">
+    <section class="v63-entry-panel">
+      <div class="v63-entry-brand"><img src="{{ url_for('static', filename='vaigo-mark.svg') }}" alt=""><b>VAIGO</b><em>NAVEGAÇÃO ADAPTATIVA</em></div>
+      <div class="v63-entry-kicker">Seu trajeto, organizado</div>
+      <h1>Menos ruído.<span>Mais caminho.</span></h1>
+      <p class="v63-entry-lead">Rotas rápidas, alternativas úteis e contexto do trajeto em uma interface feita para você decidir em segundos.</p>
+      <div class="v63-entry-proof">
+        <span><i data-lucide="route" width="12"></i>10 rotas para testar</span>
+        <span><i data-lucide="waypoints" width="12"></i>Micro-rotas</span>
+        <span><i data-lucide="shield-check" width="12"></i>Contexto de segurança</span>
+      </div>
+
+      <div class="v63-auth-block">
+        {% if request.args.get('logged_out') %}<div class="auth-logout-note"><i data-lucide="check-circle-2" width="16"></i><div><b>Sessão encerrada</b><span>Você saiu da sua conta com segurança.</span></div></div>{% endif %}
+        <div class="v63-auth-label"><span>Começar agora</span><span>leva menos de um minuto</span></div>
+        {% if google_ready %}
+        <a class="auth-google auth-google-primary" id="googleOAuthLink" href="{{ url_for('google_login', next=request.args.get('next')) }}" data-google-auth>
+          <svg class="google-logo" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.92h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.33 2.98-7.38Z"/><path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.62-2.39l-3.24-2.51c-.9.6-2.04.96-3.38.96-2.61 0-4.82-1.76-5.61-4.13H3.05v2.59A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.39 13.93A6.02 6.02 0 0 1 6.08 12c0-.67.12-1.32.31-1.93V7.48H3.05A10 10 0 0 0 2 12c0 1.61.39 3.14 1.05 4.52l3.34-2.59Z"/><path fill="#EA4335" d="M12 5.94c1.47 0 2.79.51 3.83 1.5l2.87-2.87C16.96 2.95 14.7 2 12 2a10 10 0 0 0-8.95 5.48l3.34 2.59C7.18 7.7 9.39 5.94 12 5.94Z"/></svg>
+          <span>Continuar com Google</span><small>recomendado</small>
+        </a>
+        {% else %}
+        <div class="auth-google auth-google-primary is-disabled" aria-disabled="true"><svg class="google-logo" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#A4A9B4"/></svg><span>Google indisponível</span><small>use e-mail</small></div>
+        {% endif %}
+        <div class="v63-auth-row">
+          <a class="auth-choice primary" href="#loginSheet" data-sheet-open="loginSheet"><i data-lucide="mail" width="17"></i><span>Entrar com e-mail</span></a>
+          <a class="auth-choice secondary" href="{{ url_for('register', next=request.args.get('next')) }}#registerSheet"><i data-lucide="user-plus" width="17"></i><span>Criar conta</span></a>
+        </div>
+        <a class="auth-guest" href="{{ url_for('index') }}"><i data-lucide="map" width="14"></i>Explorar o mapa sem conta</a>
+        <div class="auth-legal">Ao continuar, você concorda com nossos <a href="{{ url_for('about') }}">Termos de Uso</a> e <a href="{{ url_for('about') }}">Política de Privacidade</a>.</div>
+      </div>
+    </section>
+
+    <section class="v63-route-stage" aria-label="Prévia da experiência VAIGO">
+      <div class="v63-stage-brand"><i></i> MAPA AO VIVO · SÃO PAULO</div>
+      <svg class="v63-stage-svg" viewBox="0 0 820 820" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs><linearGradient id="v63RouteGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8A82FF"/><stop offset="1" stop-color="#5B50F2"/></linearGradient></defs>
+        <path class="route-shadow" d="M46 710 C138 674 175 604 206 530 C239 449 319 456 359 388 C399 321 359 241 452 196 C531 158 635 199 748 101"/>
+        <path class="route-line" d="M46 710 C138 674 175 604 206 530 C239 449 319 456 359 388 C399 321 359 241 452 196 C531 158 635 199 748 101"/>
+        <path class="route-dash" d="M46 710 C138 674 175 604 206 530 C239 449 319 456 359 388 C399 321 359 241 452 196 C531 158 635 199 748 101"/>
+      </svg>
+      <div class="v63-stage-puck"><i data-lucide="navigation" width="16"></i></div>
+      <div class="v63-stage-pin"></div>
+      <div class="v63-stage-card route"><small>PRÓXIMO TRAJETO</small><b>Morumbi → Av. Paulista</b><span>Alternativa ajustada para evitar lentidão forte.</span><div class="v63-stage-meta"><em>18 min</em><em>9,4 km</em><em>+2 opções</em></div></div>
+      <div class="v63-stage-card metric"><small>FLUXO DA ROTA</small><b>78%</b><span>trânsito fluindo bem</span><div class="meter"><i></i></div></div>
+    </section>
+  </main>
+
+  <section class="auth-sheet" id="loginSheet" aria-label="Entrar" aria-hidden="true">
+    <button type="button" class="sheet-backdrop" data-sheet-close aria-label="Fechar"></button>
+    <div class="sheet-card"><div class="sheet-grab"></div><header class="sheet-head"><div><h2>Entrar</h2><p>Acesse sua conta para continuar suas rotas.</p></div><button type="button" class="sheet-close" data-sheet-close aria-label="Fechar">×</button></header>
+      <form method="post" action="{{ url_for('login', next=request.args.get('next')) }}#loginSheet" class="sheet-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="sheet-field"><label for="email">E-mail</label><input id="email" class="sheet-input" type="email" name="email" autocomplete="email" inputmode="email" required placeholder="voce@exemplo.com"></div>
+        <div class="sheet-field"><label for="password">Senha</label><div class="password-shell"><input id="password" class="sheet-input" type="password" name="password" autocomplete="current-password" required placeholder="Sua senha"><button class="password-toggle" type="button" data-password-toggle="password" aria-label="Mostrar senha"><i data-lucide="eye" width="18"></i></button></div></div>
+        <button class="sheet-submit" type="submit">Entrar</button>
+      </form>
+      <div class="sheet-switch">Ainda não tem conta? <a href="{{ url_for('register', next=request.args.get('next')) }}#registerSheet">Criar conta</a></div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='auth-entry.js') }}?v=63"></script>{% endblock %}

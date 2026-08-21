@@ -1,0 +1,147 @@
+{
+  "version": 8,
+  "name": "VAIGO V63 Light",
+  "metadata": {
+    "vaigo:version": "63",
+    "vaigo:purpose": "Production light navigation map",
+    "mapbox:autocomposite": false
+  },
+  "center": [-46.6333, -23.5505],
+  "zoom": 12,
+  "bearing": 0,
+  "pitch": 0,
+  "sources": {
+    "composite": {
+      "type": "vector",
+      "url": "mapbox://mapbox.mapbox-streets-v8"
+    }
+  },
+  "sprite": "mapbox://sprites/mapbox/streets-v12",
+  "glyphs": "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
+  "layers": [
+    {
+      "id": "vaigo-background",
+      "type": "background",
+      "paint": {"background-color": "#F2F3F7"}
+    },
+    {
+      "id": "vaigo-landuse",
+      "type": "fill",
+      "source": "composite",
+      "source-layer": "landuse",
+      "paint": {
+        "fill-color": ["match", ["get", "class"], "park", "#E8F0E8", "pitch", "#EDF2E8", "school", "#F2EFE7", "hospital", "#F2EAED", "#EEEFF3"],
+        "fill-opacity": 0.75
+      }
+    },
+    {
+      "id": "vaigo-water",
+      "type": "fill",
+      "source": "composite",
+      "source-layer": "water",
+      "paint": {"fill-color": "#DCE8F4"}
+    },
+    {
+      "id": "vaigo-waterway",
+      "type": "line",
+      "source": "composite",
+      "source-layer": "waterway",
+      "paint": {"line-color": "#C8DCEC", "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.4, 14, 1.2]}
+    },
+    {
+      "id": "vaigo-buildings",
+      "type": "fill",
+      "source": "composite",
+      "source-layer": "building",
+      "minzoom": 13,
+      "paint": {"fill-color": "#E1E3E8", "fill-opacity": 0.74, "fill-outline-color": "#D5D8DF"}
+    },
+    {
+      "id": "vaigo-road-local-casing",
+      "type": "line",
+      "source": "composite",
+      "source-layer": "road",
+      "filter": ["match", ["get", "class"], ["street", "street_limited", "service", "path"], true, false],
+      "layout": {"line-cap": "round", "line-join": "round"},
+      "paint": {"line-color": "#D7DAE1", "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.5, 14, 3.2, 18, 15]}
+    },
+    {
+      "id": "vaigo-road-local",
+      "type": "line",
+      "source": "composite",
+      "source-layer": "road",
+      "filter": ["match", ["get", "class"], ["street", "street_limited", "service", "path"], true, false],
+      "layout": {"line-cap": "round", "line-join": "round"},
+      "paint": {"line-color": "#FFFFFF", "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.25, 14, 2.2, 18, 12]}
+    },
+    {
+      "id": "vaigo-road-main-casing",
+      "type": "line",
+      "source": "composite",
+      "source-layer": "road",
+      "filter": ["match", ["get", "class"], ["primary", "secondary", "tertiary", "trunk", "motorway"], true, false],
+      "layout": {"line-cap": "round", "line-join": "round"},
+      "paint": {"line-color": "#D0D3DC", "line-width": ["interpolate", ["linear"], ["zoom"], 6, 0.8, 12, 2.6, 16, 10, 19, 24]}
+    },
+    {
+      "id": "vaigo-road-main",
+      "type": "line",
+      "source": "composite",
+      "source-layer": "road",
+      "filter": ["match", ["get", "class"], ["primary", "secondary", "tertiary", "trunk", "motorway"], true, false],
+      "layout": {"line-cap": "round", "line-join": "round"},
+      "paint": {
+        "line-color": ["match", ["get", "class"], "motorway", "#F8F6F1", "trunk", "#FAF8F3", "#FFFFFF"],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 6, 0.5, 12, 1.8, 16, 7.5, 19, 20]
+      }
+    },
+    {
+      "id": "vaigo-admin",
+      "type": "line",
+      "source": "composite",
+      "source-layer": "admin",
+      "filter": ["<=", ["get", "admin_level"], 4],
+      "paint": {"line-color": "#C8CBD5", "line-width": 1, "line-dasharray": [2, 2], "line-opacity": 0.6}
+    },
+    {
+      "id": "vaigo-road-label",
+      "type": "symbol",
+      "source": "composite",
+      "source-layer": "road_label",
+      "minzoom": 12,
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": ["coalesce", ["get", "name_pt"], ["get", "name"]],
+        "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10, 17, 13]
+      },
+      "paint": {"text-color": "#757D8D", "text-halo-color": "#FFFFFF", "text-halo-width": 1.5}
+    },
+    {
+      "id": "vaigo-place-label",
+      "type": "symbol",
+      "source": "composite",
+      "source-layer": "place_label",
+      "layout": {
+        "text-field": ["coalesce", ["get", "name_pt"], ["get", "name"]],
+        "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 5, 11, 12, 16, 16, 19]
+      },
+      "paint": {"text-color": "#51596B", "text-halo-color": "#F2F3F7", "text-halo-width": 1.6}
+    },
+    {
+      "id": "vaigo-poi-label",
+      "type": "symbol",
+      "source": "composite",
+      "source-layer": "poi_label",
+      "minzoom": 14,
+      "layout": {
+        "text-field": ["coalesce", ["get", "name_pt"], ["get", "name"]],
+        "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
+        "text-size": 10,
+        "text-max-width": 8
+      },
+      "paint": {"text-color": "#858D9C", "text-halo-color": "#F7F8FA", "text-halo-width": 1.4}
+    }
+  ]
+}

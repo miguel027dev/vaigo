@@ -1,0 +1,138 @@
+/* ============================================================
+   VAIGO V61 — auth refinement
+   Same white/purple identity, more photographic and product-like.
+   ============================================================ */
+:root{
+  --v61-purple:#5B5CE2;
+  --v61-purple-2:#7775F6;
+  --v61-ink:#151827;
+  --v61-muted:#707B8F;
+  --v61-line:#E1E5ED;
+  --v61-surface:#FFFFFF;
+  --v61-soft:#F7F8FB;
+}
+
+html[data-vaigo-theme="light"] body:has(.sparker-entry){background:#F3F5F9!important}
+.sparker-entry{background:#F3F5F9!important}
+.sparker-entry:before{
+  background:
+    radial-gradient(circle at 9% 9%,rgba(112,109,242,.10),transparent 25%),
+    radial-gradient(circle at 88% 88%,rgba(91,92,226,.075),transparent 27%)!important;
+}
+
+.auth-screen{
+  width:min(1240px,calc(100% - 34px))!important;
+  min-height:min(824px,calc(100dvh - 34px))!important;
+  margin:17px auto!important;
+  border-radius:32px!important;
+  border-color:#DEE3EC!important;
+  box-shadow:0 30px 90px rgba(28,35,70,.13),0 4px 18px rgba(28,35,70,.055)!important;
+}
+.auth-screen:after{
+  content:"";position:absolute;inset:0;z-index:20;pointer-events:none;border-radius:inherit;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.92);
+}
+
+@media (min-width:920px){
+  .auth-screen{grid-template-columns:minmax(430px,.93fr) minmax(520px,1.07fr)!important}
+  .auth-copy{padding:66px 58px 17px!important}
+  .auth-actions{padding:20px 58px 50px!important}
+  .city-art{border-left-color:#E4E8F0!important}
+}
+
+.auth-brandline{margin-bottom:28px!important}
+.auth-brandline img{width:36px!important;height:36px!important}
+.auth-copy h1{font-size:clamp(50px,5vw,74px)!important;line-height:.945!important;letter-spacing:-3.7px!important}
+.auth-copy p{font-size:14.5px!important;max-width:500px!important;color:#667287!important}
+.auth-proof{margin-top:24px!important;gap:7px!important}
+.auth-proof span{height:35px!important;background:#F9FAFC!important;border-color:#E3E7EF!important;color:#59657A!important;box-shadow:0 5px 14px rgba(34,41,76,.035)!important}
+
+/* Real São Paulo aerial visual; route overlay remains a branded UI layer. */
+.city-art{background:#E9EDF4!important;isolation:isolate!important}
+.city-art img{
+  position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+  object-fit:cover!important;object-position:center center!important;
+  transform:scale(1.015)!important;
+  filter:saturate(.92) contrast(1.02) brightness(1.035)!important;
+}
+.city-art:before{
+  z-index:2!important;
+  background:
+    linear-gradient(180deg,rgba(247,248,253,.15),transparent 24%,transparent 69%,rgba(15,18,35,.08)),
+    linear-gradient(90deg,rgba(255,255,255,.50),rgba(255,255,255,.08) 20%,transparent 38%)!important;
+}
+.city-art:after{
+  z-index:3!important;left:0!important;top:0!important;bottom:0!important;width:22%!important;
+  background:linear-gradient(90deg,#FFF 0%,rgba(255,255,255,.66) 25%,rgba(255,255,255,.10) 78%,transparent)!important;
+}
+.vaigo-login-route{z-index:4!important;inset:0!important;width:100%!important;height:100%!important;filter:drop-shadow(0 9px 18px rgba(91,92,226,.18))!important}
+.vaigo-login-route .route-halo{stroke:rgba(255,255,255,.92)!important;stroke-width:17!important;opacity:.72!important}
+.vaigo-login-route .route-main{stroke-width:7!important;filter:drop-shadow(0 0 8px rgba(91,92,226,.28))!important}
+.city-route-badge{
+  top:18px!important;right:18px!important;bottom:auto!important;
+  height:38px!important;padding:0 13px!important;border-radius:14px!important;
+  background:rgba(255,255,255,.92)!important;border-color:rgba(231,234,242,.94)!important;
+  box-shadow:0 12px 34px rgba(22,30,61,.14)!important;
+  color:#424B60!important;font-size:8.3px!important;
+}
+.city-location-card{
+  position:absolute;z-index:6;left:22px;bottom:22px;min-width:210px;max-width:72%;padding:13px 14px 12px;
+  border:1px solid rgba(231,234,242,.92);border-radius:17px;background:rgba(255,255,255,.93);
+  box-shadow:0 16px 40px rgba(24,31,64,.15);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+}
+.city-location-card small{display:flex;align-items:center;gap:6px;color:#7772DF;font-size:7px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+.city-location-card b{display:block;margin-top:5px;color:#1E2434;font-size:13px;letter-spacing:-.25px}
+.city-location-card span{display:block;margin-top:4px;color:#737D8E;font-size:8px;line-height:1.4}
+.city-location-card .city-live-dot{width:6px;height:6px;border-radius:999px;background:#5B5CE2;box-shadow:0 0 0 4px rgba(91,92,226,.10)}
+
+.auth-actions-head h2{font-size:24px!important}
+.auth-actions-head p{font-size:10.8px!important}
+.auth-google.auth-google-primary{height:60px!important;border-radius:17px!important}
+.auth-email-primary{height:57px!important;border-radius:17px!important}
+.auth-choice.secondary{height:52px!important;border-radius:16px!important}
+.auth-google.auth-google-primary,.auth-email-primary,.auth-choice.secondary{position:relative;overflow:hidden!important}
+.auth-google.auth-google-primary:after,.auth-email-primary:after,.auth-choice.secondary:after{
+  content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(110deg,transparent 20%,rgba(255,255,255,.36) 48%,transparent 72%);transform:translateX(-130%);transition:transform .48s ease;
+}
+.auth-google.auth-google-primary:hover:after,.auth-email-primary:hover:after,.auth-choice.secondary:hover:after{transform:translateX(130%)}
+.auth-guest{border-radius:14px!important}
+
+.auth-theme-toggle{box-shadow:0 8px 22px rgba(30,36,72,.10)!important}
+
+@media (max-width:919px){
+  .auth-screen{width:min(760px,calc(100% - 22px))!important;margin:11px auto!important;min-height:calc(100dvh - 22px)!important;border-radius:27px!important}
+  .auth-copy{padding:30px 22px 14px!important}
+  .auth-copy h1{font-size:clamp(42px,11vw,62px)!important;letter-spacing:-2.9px!important}
+  .auth-copy p{font-size:13px!important;margin-top:15px!important}
+  .auth-actions{padding:14px 22px 25px!important}
+  .city-art{min-height:330px!important;height:38dvh!important;max-height:480px!important;margin:0 12px!important;border:1px solid #E1E5ED!important;border-radius:22px!important;overflow:hidden!important}
+  .city-art:after{width:15%!important;background:linear-gradient(90deg,rgba(255,255,255,.34),transparent)!important}
+  .city-location-card{left:14px;bottom:14px;min-width:190px;padding:10px 11px}
+  .city-route-badge{top:13px!important;right:13px!important}
+}
+
+@media (max-width:520px){
+  .auth-screen{width:calc(100% - 12px)!important;margin:6px auto!important;min-height:calc(100dvh - 12px)!important;border-radius:24px!important}
+  .auth-copy{padding:25px 16px 11px!important}
+  .auth-brandline{margin-bottom:17px!important}
+  .auth-brandline span{display:none!important}
+  .auth-copy h1{font-size:clamp(38px,12.6vw,52px)!important;line-height:.96!important;letter-spacing:-2.5px!important}
+  .auth-copy p{font-size:12.2px!important;line-height:1.52!important}
+  .auth-proof{margin-top:16px!important;gap:5px!important}.auth-proof span{height:31px!important;padding:0 9px!important;font-size:7.2px!important}
+  .city-art{height:32dvh!important;min-height:245px!important;max-height:340px!important;margin:0 8px!important;border-radius:19px!important}
+  .city-location-card{left:10px;bottom:10px;min-width:0;max-width:75%;padding:9px 10px;border-radius:14px}.city-location-card b{font-size:11px}.city-location-card span{font-size:7px}
+  .city-route-badge{height:33px!important;padding:0 10px!important;border-radius:12px!important;font-size:7px!important}
+  .auth-actions{padding:12px 16px 19px!important;gap:8px!important}
+  .auth-actions-head h2{font-size:21px!important}.auth-actions-head p{font-size:9.6px!important}
+  .auth-google.auth-google-primary{height:55px!important}.auth-email-primary{height:53px!important}.auth-choice.secondary{height:48px!important}
+}
+
+@media (max-height:720px) and (min-width:920px){
+  .auth-screen{min-height:calc(100dvh - 24px)!important;margin:12px auto!important}
+  .auth-copy{padding-top:40px!important}.auth-copy h1{font-size:52px!important}.auth-copy p{margin-top:12px!important}.auth-proof{margin-top:14px!important}
+  .auth-actions{padding-bottom:25px!important;padding-top:12px!important}.auth-actions-head p{display:none!important}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .auth-google.auth-google-primary:after,.auth-email-primary:after,.auth-choice.secondary:after{display:none!important}
+}

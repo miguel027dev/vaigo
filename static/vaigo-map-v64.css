@@ -1,0 +1,244 @@
+/* VAIGO V64 — focused polish requested after V63.
+   This file intentionally changes only search results, nearby/support reliability UI,
+   route alternatives, preview controls, navigation camera chooser and active HUD. */
+
+/* Search results: on phones they open upward from the search field. */
+@media (max-width: 899px){
+  .planner-search-card .search-results{
+    top:auto!important;
+    bottom:calc(100% + 7px)!important;
+    max-height:min(42dvh,340px)!important;
+    overscroll-behavior:contain!important;
+    scroll-padding-top:6px!important;
+    z-index:96!important;
+  }
+  .planner-search-card .search-results.show{animation:v64ResultsUp .16s ease-out both!important}
+}
+@keyframes v64ResultsUp{from{opacity:0;transform:translateY(7px) scale(.99)}to{opacity:1;transform:none}}
+
+/* Alternatives stay in one fluid horizontal row. */
+.route-variants{
+  display:flex!important;
+  grid-template-columns:none!important;
+  gap:7px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  scroll-snap-type:x proximity!important;
+  scrollbar-width:none!important;
+  -webkit-overflow-scrolling:touch!important;
+  padding:1px 1px 4px!important;
+  margin:7px 0 8px!important;
+}
+.route-variants::-webkit-scrollbar{display:none!important}
+.route-variant{
+  flex:0 0 clamp(104px,27%,132px)!important;
+  min-width:104px!important;
+  max-width:132px!important;
+  min-height:54px!important;
+  scroll-snap-align:start!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  border-radius:14px!important;
+  padding:8px 10px!important;
+  background:#F8F9FB!important;
+  border:1px solid #E2E5EC!important;
+  color:#475064!important;
+  box-shadow:none!important;
+}
+.route-variant b{font-size:12px!important;line-height:1!important;color:#2F3547!important;letter-spacing:-.2px!important}
+.route-variant span{font-size:7.2px!important;line-height:1.25!important;color:#8B93A2!important;margin-top:5px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.route-variant.active{background:#EFEEFF!important;border-color:#CFCBFA!important;box-shadow:0 6px 18px rgba(102,92,246,.10)!important}
+.route-variant.active b,.route-variant.active span{color:#5F57DF!important}
+@media(max-width:430px){.route-variant{flex-basis:112px!important;min-width:112px!important;max-width:112px!important}}
+
+/* Preview cancellation appears as a separate X beside the recenter/calibrate button. */
+.floating-preview-cancel{
+  position:absolute!important;
+  z-index:42!important;
+  width:48px!important;
+  height:48px!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  border:1px solid #E2E5EC!important;
+  border-radius:16px!important;
+  background:rgba(255,255,255,.97)!important;
+  color:#6B7282!important;
+  box-shadow:0 13px 32px rgba(37,44,77,.12)!important;
+  backdrop-filter:blur(18px)!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+  transform:scale(.92)!important;
+  transition:opacity .16s ease,transform .16s ease,visibility .16s!important;
+}
+.floating-preview-cancel.show{opacity:1!important;visibility:visible!important;pointer-events:auto!important;transform:none!important}
+.floating-preview-cancel:active{transform:scale(.96)!important}
+.route-previewing #recenterBtn{box-shadow:0 13px 32px rgba(37,44,77,.12),0 0 0 4px rgba(102,92,246,.08)!important}
+@media(max-width:899px){.floating-preview-cancel{width:44px!important;height:44px!important;border-radius:14px!important}}
+
+/* Camera chooser: two identical stacked choices, easier to tap and impossible to collide. */
+.immersive-choice-card{width:min(500px,calc(100vw - 28px))!important;padding:20px!important;border-radius:24px!important}
+.immersive-options{display:flex!important;flex-direction:column!important;grid-template-columns:none!important;gap:9px!important;margin-top:17px!important}
+.immersive-option,.immersive-option.primary{
+  width:100%!important;
+  min-height:78px!important;
+  display:grid!important;
+  grid-template-columns:46px minmax(0,1fr) 22px!important;
+  align-items:center!important;
+  gap:11px!important;
+  padding:11px 12px!important;
+  text-align:left!important;
+  border:1px solid #E2E5EC!important;
+  border-radius:17px!important;
+  background:#FAFBFC!important;
+  color:#303649!important;
+  box-shadow:none!important;
+}
+.immersive-option:hover{border-color:#CBC8F8!important;background:#F7F6FF!important}
+.immersive-option-icon{width:46px!important;height:46px!important;display:grid!important;place-items:center!important;border-radius:14px!important;background:#EFEEFF!important;color:#625BE3!important}
+.immersive-option-copy{display:block!important;min-width:0!important}
+.immersive-option-copy b{display:block!important;font-size:14px!important;line-height:1.1!important;color:#292F41!important}
+.immersive-option-copy>span{display:block!important;margin-top:5px!important;font-size:9px!important;line-height:1.4!important;color:#7E8797!important}
+.immersive-option-arrow{color:#A3AABA!important}
+@media(max-width:420px){
+  .immersive-choice{padding:10px!important}
+  .immersive-choice-card{padding:15px!important;border-radius:21px!important}
+  .immersive-choice-head h3{font-size:18px!important}
+  .immersive-option,.immersive-option.primary{min-height:74px!important;grid-template-columns:42px minmax(0,1fr) 18px!important;padding:10px!important}
+  .immersive-option-icon{width:42px!important;height:42px!important;border-radius:13px!important}
+}
+
+/* Active navigation HUD: compact route info card and street chip directly above it. */
+body.body-nav #activeNav.nav-panel.nav-minimal{
+  padding:7px!important;
+  border-radius:19px!important;
+  overflow:visible!important;
+}
+body.body-nav .nav-summary-row{grid-template-columns:repeat(3,minmax(0,1fr)) 46px!important;gap:5px!important}
+body.body-nav .nav-summary-item{
+  height:46px!important;
+  padding:0 8px!important;
+  border-radius:12px!important;
+  background:#FAFBFC!important;
+  border:1px solid #E5E7EE!important;
+}
+body.body-nav .nav-summary-item small{font-size:6px!important;letter-spacing:.09em!important;color:#929AA8!important}
+body.body-nav .nav-summary-item strong{font-size:10.5px!important;margin-top:2px!important;color:#2D3345!important}
+body.body-nav .nav-search-btn{width:46px!important;height:46px!important;border-radius:13px!important;box-shadow:none!important}
+body.body-nav .nav-street-chip{
+  top:auto!important;
+  right:auto!important;
+  width:max-content!important;
+  max-width:min(72vw,340px)!important;
+  min-width:0!important;
+  height:auto!important;
+  min-height:32px!important;
+  padding:7px 12px!important;
+  border-radius:12px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:0!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  font-size:10px!important;
+  font-weight:850!important;
+  line-height:1.15!important;
+  box-shadow:0 9px 24px rgba(37,43,75,.10)!important;
+}
+body.body-nav .nav-street-chip span{display:block!important;max-width:100%!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+body.body-nav .nav-control-stack{z-index:45!important}
+body.body-nav .nav-stack-btn{box-shadow:0 8px 22px rgba(37,43,75,.09)!important}
+
+/* Route feedback card: clean, compact and tap-friendly. */
+body.body-nav .nav-feedback.show{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:9px!important;
+  padding:7px!important;
+  border-radius:15px!important;
+  min-height:46px!important;
+  max-width:min(370px,calc(100vw - 16px))!important;
+}
+.nav-feedback-copy{display:flex!important;align-items:center!important;gap:7px!important;min-width:0!important;padding-left:3px!important;color:#625BE3!important}
+.nav-feedback-copy>span{display:block!important;min-width:0!important;margin:0!important}
+.nav-feedback-copy small{display:block!important;font-size:5.8px!important;font-weight:950!important;letter-spacing:.1em!important;color:#9AA1AE!important;line-height:1!important}
+.nav-feedback-copy b{display:block!important;margin-top:3px!important;font-size:9px!important;line-height:1!important;color:#3B4254!important;white-space:nowrap!important}
+.nav-feedback-actions{display:flex!important;gap:5px!important}
+body.body-nav .nav-feedback button{height:32px!important;padding:0 8px!important;display:flex!important;align-items:center!important;gap:4px!important;border-radius:10px!important;font-size:7.4px!important}
+
+/* Black mode keeps exactly the same geometry. */
+html[data-vaigo-theme="black"] .route-variant,
+html[data-vaigo-theme="black"] .immersive-option,
+html[data-vaigo-theme="black"] .immersive-option.primary,
+html[data-vaigo-theme="black"] body.body-nav .nav-summary-item,
+html[data-vaigo-theme="black"] .floating-preview-cancel{background:#181B24!important;border-color:#2B303B!important;color:#DCE0E7!important}
+html[data-vaigo-theme="black"] .route-variant b,
+html[data-vaigo-theme="black"] .immersive-option-copy b,
+html[data-vaigo-theme="black"] body.body-nav .nav-summary-item strong,
+html[data-vaigo-theme="black"] .nav-feedback-copy b{color:#F0F2F6!important}
+html[data-vaigo-theme="black"] .route-variant span,
+html[data-vaigo-theme="black"] .immersive-option-copy>span{color:#969EAC!important}
+html[data-vaigo-theme="black"] .route-variant.active{background:#24213F!important;border-color:#3B3769!important}
+html[data-vaigo-theme="black"] .immersive-option-icon{background:#24213F!important;color:#B4B0FF!important}
+
+@media(prefers-reduced-motion:reduce){.planner-search-card .search-results.show,.floating-preview-cancel{animation:none!important;transition:none!important}}
+
+/* V64 final conflict guards against legacy flex/grid sizing. */
+.route-variants{flex-wrap:nowrap!important;align-items:stretch!important}
+.route-variant{width:auto!important}
+
+/* V64 final specificity guard: keep route alternatives in one fluid row even over legacy responsive rules. */
+.ws-app .route-variants{
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  align-items:stretch!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  overscroll-behavior-x:contain!important;
+  scroll-snap-type:x proximity!important;
+  -webkit-overflow-scrolling:touch!important;
+}
+.ws-app .route-variant{
+  flex:0 0 clamp(104px,27%,132px)!important;
+  width:auto!important;
+  min-width:104px!important;
+  max-width:132px!important;
+  scroll-snap-align:start!important;
+}
+@media(max-width:430px){
+  .ws-app .route-variant{
+    flex:0 0 112px!important;
+    width:112px!important;
+    min-width:112px!important;
+    max-width:112px!important;
+  }
+}
+
+/* V64 mobile search portal: results escape the bottom-sheet scroll area and open upward. */
+@media(max-width:899px){
+  .ws-app>.search-results.search-results-portal{
+    position:absolute!important;
+    display:none;
+    z-index:96!important;
+    margin:0!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain!important;
+    border:1px solid #E1E5ED!important;
+    border-radius:18px!important;
+    background:rgba(255,255,255,.985)!important;
+    color:#202536!important;
+    box-shadow:0 20px 48px rgba(31,38,55,.18)!important;
+  }
+  .ws-app>.search-results.search-results-portal.show{display:block!important}
+  html[data-vaigo-theme="black"] .ws-app>.search-results.search-results-portal{
+    background:rgba(18,21,29,.985)!important;
+    border-color:#2B303C!important;
+    color:#F2F3F6!important;
+    box-shadow:0 20px 48px rgba(0,0,0,.36)!important;
+  }
+}

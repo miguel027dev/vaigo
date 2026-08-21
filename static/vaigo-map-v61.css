@@ -1,0 +1,176 @@
+/* ============================================================
+   VAIGO V61 — map UI polish
+   Keeps V60 behavior; refines hierarchy, spacing and navigation HUD.
+   ============================================================ */
+:root{
+  --v61-purple:#5B5CE2;
+  --v61-purple-2:#7775F6;
+  --v61-ink:#171A2B;
+  --v61-muted:#727D91;
+  --v61-line:#DEE3EC;
+  --v61-glass:rgba(255,255,255,.965);
+  --v61-shadow:0 18px 54px rgba(30,38,76,.13);
+}
+
+html[data-vaigo-theme="light"] .map-vignette{
+  background:linear-gradient(180deg,rgba(246,248,252,.055),transparent 20%,transparent 73%,rgba(246,248,252,.09))!important;
+}
+
+/* Controls share one visual grammar. */
+html[data-vaigo-theme="light"] .options-btn,
+html[data-vaigo-theme="light"] .map-tools .map-btn,
+html[data-vaigo-theme="light"] .floating-locate{
+  border-color:rgba(214,220,231,.98)!important;
+  background:rgba(255,255,255,.965)!important;
+  color:#465168!important;
+  box-shadow:0 10px 30px rgba(31,39,77,.11),inset 0 1px 0 rgba(255,255,255,.95)!important;
+}
+html[data-vaigo-theme="light"] .options-btn:hover,
+html[data-vaigo-theme="light"] .map-tools .map-btn:hover,
+html[data-vaigo-theme="light"] .floating-locate:hover{transform:translateY(-1px)!important;box-shadow:0 14px 34px rgba(31,39,77,.14)!important}
+html[data-vaigo-theme="light"] .map-tools .map-btn.active,
+html[data-vaigo-theme="light"] .map-tools .map-btn.safety-open{background:#F0EFFF!important;color:var(--v61-purple)!important;border-color:#D4D2FF!important}
+
+/* Planner becomes a calm product surface instead of a generic bottom sheet. */
+html[data-vaigo-theme="light"] .ws-app .sheet{
+  border-color:rgba(216,222,232,.98)!important;
+  background:rgba(252,253,255,.97)!important;
+  box-shadow:0 -8px 34px rgba(32,39,76,.10),0 22px 64px rgba(32,39,76,.11)!important;
+  border-radius:29px!important;
+}
+html[data-vaigo-theme="light"] .ws-app .sheet:after{
+  content:"";position:absolute;z-index:0;left:50%;top:-1px;width:92px;height:3px;transform:translateX(-50%);
+  border-radius:0 0 999px 999px;background:linear-gradient(90deg,transparent,#817EF7,transparent);opacity:.72;pointer-events:none;
+}
+.planner-welcome,#routeState{position:relative;z-index:1}
+html[data-vaigo-theme="light"] .planner-grab{background:linear-gradient(#BEC5D1,#BEC5D1) center/34px 4px no-repeat!important}
+html[data-vaigo-theme="light"] .planner-heading-copy b{font-size:18px!important;letter-spacing:-.65px!important}
+html[data-vaigo-theme="light"] .planner-weather{background:#F8F9FC!important;border-color:#E3E7EF!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important}
+
+html[data-vaigo-theme="light"] .planner-preset{
+  border-color:#E1E5ED!important;background:#FFF!important;border-radius:16px!important;
+  box-shadow:0 5px 16px rgba(38,45,83,.045)!important;
+}
+html[data-vaigo-theme="light"] .planner-preset:hover{background:#F9F9FE!important;border-color:#D5D5F1!important;transform:translateY(-1px)!important}
+html[data-vaigo-theme="light"] .planner-preset-icon{background:linear-gradient(145deg,#F1F0FF,#EAE9FF)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important}
+
+html[data-vaigo-theme="light"] .planner-search-card.search-card{
+  border-color:#D8DEE9!important;border-radius:20px!important;background:#FFF!important;
+  box-shadow:0 12px 34px rgba(32,39,76,.10),inset 0 1px 0 rgba(255,255,255,.98)!important;
+}
+html[data-vaigo-theme="light"] .planner-search-card.search-card:focus-within{
+  border-color:#BEBBF7!important;box-shadow:0 16px 42px rgba(32,39,76,.14),0 0 0 4px rgba(91,92,226,.06)!important;
+}
+html[data-vaigo-theme="light"] .planner-search-icon{background:linear-gradient(145deg,#F0EFFF,#E7E6FF)!important;border:1px solid #DEDCFF!important}
+html[data-vaigo-theme="light"] .planner-search-card .row-btn{background:#F6F8FB!important;border:1px solid #ECEFF4!important}
+html[data-vaigo-theme="light"] .planner-adjust-btn{
+  background:linear-gradient(180deg,#F8F7FF,#EFEEFF)!important;border-color:#D9D8F4!important;
+  box-shadow:0 10px 26px rgba(61,61,123,.09),inset 0 1px 0 rgba(255,255,255,.92)!important;
+}
+html[data-vaigo-theme="light"] .planner-adjust-btn:hover{transform:translateY(-1px)!important;box-shadow:0 13px 30px rgba(61,61,123,.13)!important}
+
+html[data-vaigo-theme="light"] .nearby-service,
+html[data-vaigo-theme="light"] .route-card,
+html[data-vaigo-theme="light"] .route-variant,
+html[data-vaigo-theme="light"] .parking-nearby,
+html[data-vaigo-theme="light"] .route-insight{
+  background:#FFF!important;border-color:#E1E5ED!important;box-shadow:0 5px 18px rgba(35,42,78,.035)!important;
+}
+html[data-vaigo-theme="light"] .nearby-service:hover{transform:translateY(-1px)!important;background:#FAFAFE!important}
+html[data-vaigo-theme="light"] .route-variant.active{background:#F1F0FF!important;border-color:#AAA7FF!important;box-shadow:0 8px 22px rgba(91,92,226,.09)!important}
+html[data-vaigo-theme="light"] .start-trip-cta{border-radius:18px!important;box-shadow:0 14px 34px rgba(91,92,226,.25)!important}
+
+/* Destination confirmation uses the same rounded language. */
+html[data-vaigo-theme="light"] .destination-confirm{
+  background:rgba(255,255,255,.975)!important;border-color:#DCE1EA!important;color:#202638!important;
+  box-shadow:0 18px 54px rgba(34,41,78,.15)!important;border-radius:25px!important;
+}
+html[data-vaigo-theme="light"] .destination-confirm p{color:#778195!important}
+html[data-vaigo-theme="light"] .destination-edit{background:#F7F8FB!important;color:#505B70!important;border-color:#E1E5ED!important}
+html[data-vaigo-theme="light"] .destination-accept{background:linear-gradient(135deg,#706DF2,#5B5CE2)!important;color:#FFF!important;box-shadow:0 9px 24px rgba(91,92,226,.22)!important}
+
+/* Navigation: a larger, cleaner information rail. */
+.body-nav .ws-app #activeNav.nav-panel.nav-minimal{
+  padding:11px!important;border-radius:28px!important;
+  box-shadow:0 -10px 38px rgba(31,39,77,.12),0 20px 58px rgba(31,39,77,.12)!important;
+  overflow:hidden!important;
+}
+.body-nav .ws-app #activeNav.nav-panel.nav-minimal:before{
+  content:"";position:absolute;z-index:2;left:18px;right:18px;top:0;height:3px;border-radius:0 0 999px 999px;
+  background:linear-gradient(90deg,transparent,#7B79F6 24%,#5B5CE2 50%,#7B79F6 76%,transparent);opacity:.78;pointer-events:none;
+}
+.body-nav .nav-summary-row{gap:8px!important}
+.body-nav .nav-summary-item{
+  height:74px!important;border-radius:18px!important;background:#F8F9FC!important;border-color:#E2E6EE!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.94)!important;
+}
+.body-nav .nav-summary-item small{font-size:7.2px!important;color:#7B8598!important}
+.body-nav .nav-summary-item strong{font-size:15px!important;margin-top:7px!important;color:#1D2333!important}
+.body-nav .nav-search-btn{width:64px!important;height:74px!important;border-radius:19px!important;box-shadow:0 11px 28px rgba(91,92,226,.25)!important}
+.body-nav .nav-street-chip{
+  bottom:calc(var(--v60-safe-bottom) + 125px)!important;min-height:50px!important;height:50px!important;border-radius:16px!important;
+  background:rgba(255,255,255,.965)!important;box-shadow:0 10px 30px rgba(31,39,77,.12)!important;
+}
+.body-nav .nav-street-chip>span{font-weight:850!important;letter-spacing:-.2px!important}
+.body-nav .nav-recalc-btn{width:42px!important;height:42px!important;border-radius:12px!important}
+.body-nav .nav-maneuver-top{
+  border-radius:22px!important;box-shadow:0 14px 40px rgba(31,39,77,.14)!important;
+  background:rgba(255,255,255,.975)!important;
+}
+.body-nav .nav-maneuver-icon{border-radius:16px!important;box-shadow:0 9px 22px rgba(91,92,226,.22)!important}
+.body-nav .nav-maneuver-copy b{font-weight:900!important;letter-spacing:-.3px!important}
+.body-nav .nav-control-stack .nav-stack-btn,.body-nav .nav-audio-toggle,.body-nav .floating-speedo,.body-nav .floating-locate{
+  border-color:#D9DFE9!important;box-shadow:0 10px 28px rgba(31,39,77,.12)!important;
+}
+.body-nav .floating-speedo{border-radius:18px!important}
+.body-nav .nav-control-stack .nav-stack-btn{border-radius:14px!important}
+.body-nav .mapboxgl-ctrl-bottom-left,.body-nav .mapboxgl-ctrl-bottom-right{bottom:calc(var(--v60-safe-bottom) + 164px)!important}
+
+/* Secondary live information should never visually outrank the route. */
+.body-nav .nav-alt-hint,.body-nav .traffic-radar,.body-nav .nav-tracking{
+  border-radius:16px!important;box-shadow:0 10px 28px rgba(31,39,77,.10)!important;
+}
+
+/* Black mode keeps V60 surfaces but receives the same geometry/polish. */
+html[data-vaigo-theme="black"] .ws-app .sheet:after,
+html[data-vaigo-theme="black"] .body-nav .ws-app #activeNav.nav-panel.nav-minimal:before{opacity:.62!important}
+html[data-vaigo-theme="black"] .body-nav .nav-summary-item{box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important}
+
+@media (max-width:699px){
+  html[data-vaigo-theme="light"] .ws-app .sheet{border-radius:26px!important;padding-left:10px!important;padding-right:10px!important}
+  .body-nav .ws-app #activeNav.nav-panel.nav-minimal{padding:9px!important;border-radius:24px!important}
+  .body-nav .nav-summary-row{gap:6px!important;grid-template-columns:repeat(3,minmax(0,1fr)) 56px!important}
+  .body-nav .nav-summary-item{height:66px!important;padding:0 7px!important;border-radius:15px!important}
+  .body-nav .nav-summary-item strong{font-size:13px!important;margin-top:6px!important}
+  .body-nav .nav-search-btn{width:56px!important;height:66px!important;border-radius:16px!important}
+  .body-nav .nav-street-chip{bottom:calc(var(--v60-safe-bottom) + 113px)!important}
+  .body-nav .mapboxgl-ctrl-bottom-left,.body-nav .mapboxgl-ctrl-bottom-right{bottom:calc(var(--v60-safe-bottom) + 151px)!important}
+}
+
+@media (max-width:430px){
+  html[data-vaigo-theme="light"] .ws-app .sheet{border-radius:24px!important}
+  .planner-heading-copy b{font-size:16.5px!important}
+  .body-nav .ws-app #activeNav.nav-panel.nav-minimal{padding:8px!important;border-radius:22px!important}
+  .body-nav .nav-summary-row{grid-template-columns:repeat(3,minmax(0,1fr)) 50px!important;gap:5px!important}
+  .body-nav .nav-summary-item{height:62px!important;border-radius:14px!important;padding:0 5px!important}
+  .body-nav .nav-summary-item small{font-size:6.2px!important}
+  .body-nav .nav-summary-item strong{font-size:11.7px!important;margin-top:5px!important}
+  .body-nav .nav-search-btn{width:50px!important;height:62px!important;border-radius:15px!important}
+  .body-nav .nav-street-chip{bottom:calc(var(--v60-safe-bottom) + 108px)!important;height:48px!important;min-height:48px!important}
+  .body-nav .mapboxgl-ctrl-bottom-left,.body-nav .mapboxgl-ctrl-bottom-right{bottom:calc(var(--v60-safe-bottom) + 145px)!important}
+}
+
+@media (max-width:370px){
+  .body-nav .nav-summary-item strong{font-size:10.8px!important}
+  .body-nav .nav-summary-item small{letter-spacing:.07em!important}
+}
+
+@media (pointer:coarse){
+  html[data-vaigo-theme="light"] .ws-app .sheet,
+  html[data-vaigo-theme="light"] .planner-search-card.search-card,
+  html[data-vaigo-theme="light"] .body-nav .ws-app #activeNav.nav-panel.nav-minimal{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .planner-preset,.planner-adjust-btn,.nearby-service,.options-btn,.map-tools .map-btn,.floating-locate{transition:none!important}
+}

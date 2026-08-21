@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Zonas de atenção · VAIGO{% endblock %}
+{% block content %}
+<main class="page"><div class="container">
+  <div class="page-head"><div><div class="eyebrow">Inteligência de segurança</div><h1 class="page-title">Zonas de atenção verificadas</h1><p class="page-subtitle">Cadastre áreas baseadas em fonte verificável. O VAIGO não classifica comunidades pelo tipo de bairro.</p></div><a class="btn" href="{{ url_for('admin_dashboard') }}"><i data-lucide="arrow-left" width="16"></i>Admin</a></div>
+  <div class="split">
+    <section class="panel"><div class="panel-head"><h3>Adicionar zona</h3><span class="badge orange">0–5</span></div><div class="panel-body">
+      <form method="post" class="form-grid"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field full"><label>Nome</label><input class="input" name="name" maxlength="100" required placeholder="Ex.: corredor com ocorrências recorrentes"></div>
+        <div class="field"><label>Latitude</label><input class="input" name="latitude" type="number" step="any" required></div>
+        <div class="field"><label>Longitude</label><input class="input" name="longitude" type="number" step="any" required></div>
+        <div class="field"><label>Raio (m)</label><input class="input" name="radius_m" type="number" min="80" max="5000" value="350"></div>
+        <div class="field"><label>Limite de segurança</label><select class="select" name="level_cap"><option value="3" selected>3/5 · Atenção</option><option value="2">2/5 · Cautela elevada</option><option value="1">1/5 · Risco alto</option><option value="0">0/5 · Evite se possível</option><option value="4">4/5 · Favorável</option><option value="5">5/5 · Sem redução</option></select></div>
+        <div class="field"><label>Tipo</label><select class="select" name="risk_type"><option value="robbery_hotspot">Ocorrências de roubo/furto</option><option value="poor_lighting">Iluminação / visibilidade</option><option value="road_hazard">Risco viário</option><option value="verified_incident_area" selected>Área de incidentes verificados</option><option value="other">Outro</option></select></div>
+        <div class="field"><label>Confiança (0–1)</label><input class="input" name="confidence" type="number" min="0" max="1" step="0.05" value="0.75"></div>
+        <div class="field"><label>Início (hora)</label><input class="input" name="start_hour" type="number" min="0" max="23" placeholder="Opcional"></div>
+        <div class="field"><label>Fim (hora)</label><input class="input" name="end_hour" type="number" min="0" max="23" placeholder="Opcional"></div>
+        <div class="field full"><label>Fonte</label><input class="input" name="source" maxlength="120" placeholder="Prefeitura, dados oficiais, operação interna…" required></div>
+        <div class="field full"><label>URL / referência da fonte</label><input class="input" name="source_url" maxlength="500" placeholder="Opcional"></div>
+        <div class="field full"><button class="btn btn-primary" type="submit"><i data-lucide="shield-plus" width="16"></i>Adicionar zona</button></div>
+      </form>
+    </div></section>
+    <section class="panel"><div class="panel-head"><h3>Como o score usa isso</h3></div><div class="panel-body"><p class="muted" style="line-height:1.7;margin-top:0">Quando uma rota cruza o raio de uma zona ativa, o algoritmo combina a confiança da fonte com a distância até a rota e aplica o limite 0–5 configurado. Relatos comunitários recentes e confirmados também entram no cálculo.</p><div class="alert-card"><div class="alert-dot"><i data-lucide="shield-check" width="18"></i></div><div><h4>Regra importante</h4><div class="tiny">Use ocorrências e fontes verificáveis. Não use classificação social, renda, origem dos moradores ou o simples nome de uma comunidade como indicador de risco.</div></div></div></div></section>
+  </div>
+  <section class="panel" style="margin-top:18px"><div class="panel-head"><h3>Zonas cadastradas</h3><span class="tiny">{{ zones|length }} registros</span></div><div class="table-wrap"><table class="table"><thead><tr><th>Zona</th><th>Nível</th><th>Raio</th><th>Fonte</th><th>Horário</th><th>Status</th></tr></thead><tbody>{% for z in zones %}<tr><td><b>{{ z['name'] }}</b><div class="tiny">{{ z['risk_type'] }} · {{ '%.5f'|format(z['latitude']) }}, {{ '%.5f'|format(z['longitude']) }}</div></td><td><span class="badge orange">máx. {{ z['level_cap'] }}/5</span></td><td>{{ z['radius_m']|int }} m</td><td>{{ z['source'] }}{% if z['source_url'] %}<div class="tiny">referência cadastrada</div>{% endif %}</td><td>{% if z['start_hour'] is not none %}{{ '%02d'|format(z['start_hour']) }}h–{{ '%02d'|format(z['end_hour']) }}h{% else %}24h{% endif %}</td><td><form action="{{ url_for('admin_risk_zone_toggle', zone_id=z['id']) }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm" type="submit">{% if z['active'] %}<span class="badge green">Ativa</span>{% else %}<span class="badge">Inativa</span>{% endif %}</button></form></td></tr>{% else %}<tr><td colspan="6"><div class="empty">Nenhuma zona cadastrada.</div></td></tr>{% endfor %}</tbody></table></div></section>
+</div></main>
+{% endblock %}

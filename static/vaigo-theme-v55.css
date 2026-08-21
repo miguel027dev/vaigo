@@ -1,0 +1,418 @@
+/* ============================================================
+   VAIGO V55 — global theme + black mode + responsive polish
+   Brand purple stays exactly #5B5CE2 / #706DF2.
+   Purple is used for action, route and selection — not as a page wash.
+   ============================================================ */
+:root{
+  --vaigo:#5B5CE2;
+  --vaigo-2:#706DF2;
+  --vaigo-deep:#4344C7;
+  --vaigo-soft:#EEEDFF;
+  --vaigo-focus:rgba(91,92,226,.14);
+  --vaigo-bg:#F4F5F8;
+  --vaigo-card:#FFFFFF;
+  --vaigo-card-2:#F8F9FC;
+  --vaigo-ink:#182033;
+  --vaigo-muted:#697386;
+  --vaigo-line:#E1E5ED;
+  --vaigo-shadow:0 10px 28px rgba(28,34,62,.08);
+  --vaigo-shadow-lg:0 24px 64px rgba(28,34,62,.14);
+}
+
+/* Remove decorative purple wash: brand color should signal action. */
+html[data-vaigo-theme="light"] body{
+  background:#F4F5F8!important;
+  background-image:none!important;
+  color:#182033!important;
+}
+html[data-vaigo-theme="light"] body:before{display:none!important}
+
+/* ---------- Global Black theme ---------- */
+html[data-vaigo-theme="black"]{
+  --vaigo-bg:#07070A;
+  --vaigo-card:#101116;
+  --vaigo-card-2:#15171D;
+  --vaigo-ink:#F4F5F8;
+  --vaigo-muted:#979EAB;
+  --vaigo-line:#252832;
+  --vaigo-soft:#1C1B35;
+  --vaigo-shadow:0 10px 28px rgba(0,0,0,.30);
+  --vaigo-shadow-lg:0 24px 68px rgba(0,0,0,.46);
+}
+html[data-vaigo-theme="black"] body{
+  background:#07070A!important;
+  background-image:none!important;
+  color:#F4F5F8!important;
+}
+html[data-vaigo-theme="black"] body:before{display:none!important}
+html[data-vaigo-theme="black"] ::selection{background:#34335E;color:#fff}
+
+html[data-vaigo-theme="black"] .topbar{
+  background:rgba(9,10,13,.94)!important;
+  border-bottom-color:#242630!important;
+  box-shadow:0 8px 28px rgba(0,0,0,.25)!important;
+}
+html[data-vaigo-theme="black"] .brand,
+html[data-vaigo-theme="black"] .title,
+html[data-vaigo-theme="black"] .page-title,
+html[data-vaigo-theme="black"] .section-title{color:#F5F6F8!important}
+html[data-vaigo-theme="black"] .navlinks a,
+html[data-vaigo-theme="black"] .navlinks button.navbtn{color:#A2A9B5!important}
+html[data-vaigo-theme="black"] .navlinks a:hover,
+html[data-vaigo-theme="black"] .navlinks button.navbtn:hover,
+html[data-vaigo-theme="black"] .navlinks a.active{background:#171824!important;color:#C7C7FF!important}
+html[data-vaigo-theme="black"] .subtitle,
+html[data-vaigo-theme="black"] .page-subtitle,
+html[data-vaigo-theme="black"] .muted,
+html[data-vaigo-theme="black"] .tiny{color:#989FAC!important}
+
+html[data-vaigo-theme="black"] .panel,
+html[data-vaigo-theme="black"] .card,
+html[data-vaigo-theme="black"] .kpi,
+html[data-vaigo-theme="black"] .alert-card,
+html[data-vaigo-theme="black"] .auth-card,
+html[data-vaigo-theme="black"] .profile-hero,
+html[data-vaigo-theme="black"] .profile-card,
+html[data-vaigo-theme="black"] .profile-detail,
+html[data-vaigo-theme="black"] .profile-link,
+html[data-vaigo-theme="black"] .faq details{
+  background:#101116!important;
+  color:#F4F5F8!important;
+  border-color:#252832!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.20)!important;
+}
+html[data-vaigo-theme="black"] .panel-head,
+html[data-vaigo-theme="black"] .detail-body{border-color:#252832!important}
+html[data-vaigo-theme="black"] footer{background:#090A0D!important;border-color:#242630!important;color:#8F97A4!important}
+html[data-vaigo-theme="black"] .iconbox,
+html[data-vaigo-theme="black"] .profile-detail summary .detail-icon{background:#1C1B35!important;color:#8F8DFF!important;border-color:#2E2C50!important}
+
+html[data-vaigo-theme="black"] .btn{
+  background:#15171D!important;color:#EEF0F4!important;border-color:#2B2E38!important;box-shadow:none!important;
+}
+html[data-vaigo-theme="black"] .btn-primary{
+  background:linear-gradient(135deg,#706DF2,#5B5CE2)!important;color:#fff!important;border-color:transparent!important;
+  box-shadow:0 12px 28px rgba(91,92,226,.24)!important;
+}
+html[data-vaigo-theme="black"] .btn-danger{background:#291619!important;color:#FF9AA4!important;border-color:#51252B!important}
+html[data-vaigo-theme="black"] .input,
+html[data-vaigo-theme="black"] .select,
+html[data-vaigo-theme="black"] .textarea,
+html[data-vaigo-theme="black"] .settings-field input,
+html[data-vaigo-theme="black"] .settings-field select,
+html[data-vaigo-theme="black"] .place-card input,
+html[data-vaigo-theme="black"] .invite-box input,
+html[data-vaigo-theme="black"] .faq-search{
+  background:#0C0D11!important;color:#F3F4F7!important;border-color:#2A2D36!important;
+}
+html[data-vaigo-theme="black"] .input::placeholder,
+html[data-vaigo-theme="black"] .textarea::placeholder,
+html[data-vaigo-theme="black"] .settings-field input::placeholder,
+html[data-vaigo-theme="black"] .faq-search::placeholder{color:#686F7B!important}
+html[data-vaigo-theme="black"] .input:focus,
+html[data-vaigo-theme="black"] .select:focus,
+html[data-vaigo-theme="black"] .textarea:focus,
+html[data-vaigo-theme="black"] .settings-field input:focus,
+html[data-vaigo-theme="black"] .settings-field select:focus,
+html[data-vaigo-theme="black"] .faq-search:focus{border-color:#6E6BEF!important;box-shadow:0 0 0 4px rgba(91,92,226,.13)!important}
+html[data-vaigo-theme="black"] .field label,
+html[data-vaigo-theme="black"] .settings-field label{color:#B0B6C1!important}
+html[data-vaigo-theme="black"] .table th,
+html[data-vaigo-theme="black"] .table td{border-color:#242730!important}
+html[data-vaigo-theme="black"] .table tr:hover td{background:#15171D!important}
+html[data-vaigo-theme="black"] .flash{background:#111218!important;color:#F2F3F6!important;border-color:#2A2D36!important}
+
+/* ---------- Theme switch ---------- */
+.vaigo-theme-setting{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 13px;border-radius:15px;border:1px solid #E1E5ED;background:#F8F9FC;min-height:64px}
+.vaigo-theme-setting .theme-copy{min-width:0}.vaigo-theme-setting .theme-copy b{display:flex;align-items:center;gap:7px;font-size:11px;color:#263047}.vaigo-theme-setting .theme-copy span{display:block;margin-top:3px;font-size:8.5px;line-height:1.35;color:#768195}
+.vaigo-theme-toggle{flex:0 0 auto;height:38px;min-width:116px;padding:0 12px;border-radius:12px;border:1px solid #D8DCE7;background:#fff;color:#3F4A60;display:flex;align-items:center;justify-content:center;gap:7px;font-size:9px;font-weight:900;cursor:pointer;transition:.18s ease}
+.vaigo-theme-toggle:hover{border-color:#C8C7F5;color:#4E50D8;background:#F7F7FF}.vaigo-theme-toggle.is-black{background:#151620;border-color:#33354A;color:#DADAFE}
+.vaigo-theme-dot{width:9px;height:9px;border-radius:50%;background:#D4D8E2;box-shadow:inset 0 0 0 2px #fff}.vaigo-theme-toggle.is-black .vaigo-theme-dot{background:#706DF2;box-shadow:0 0 0 4px rgba(112,109,242,.12)}
+html[data-vaigo-theme="black"] .vaigo-theme-setting{background:#15171D;border-color:#292C36}
+html[data-vaigo-theme="black"] .vaigo-theme-setting .theme-copy b{color:#F1F2F5}
+html[data-vaigo-theme="black"] .vaigo-theme-setting .theme-copy span{color:#9098A5}
+
+/* ---------- Map UI: Black ---------- */
+html[data-vaigo-theme="black"] .ws-app{--bg:#07080B;--glass:rgba(12,13,17,.94);--glass2:rgba(12,13,17,.985);--line:rgba(255,255,255,.085);--text:#F3F4F7;--muted:#979EAB;--ink:#F3F4F7;--soft:#15171D;background:#07080B!important;box-shadow:none!important}
+html[data-vaigo-theme="black"] .ws-app .search-card,
+html[data-vaigo-theme="black"] .ws-app .sheet,
+html[data-vaigo-theme="black"] .ws-app .account-drawer,
+html[data-vaigo-theme="black"] .ws-app .safety-drawer,
+html[data-vaigo-theme="black"] .ws-app .prefs-drawer,
+html[data-vaigo-theme="black"] .ws-app .destination-confirm,
+html[data-vaigo-theme="black"] .ws-app .route-loading-card,
+html[data-vaigo-theme="black"] .ws-app .resume-trip-card,
+html[data-vaigo-theme="black"] .ws-app .nav-panel,
+html[data-vaigo-theme="black"] body[data-mood="day"] .ws-app .search-card{
+  background:rgba(12,13,17,.965)!important;color:#F3F4F7!important;border-color:rgba(255,255,255,.085)!important;box-shadow:0 22px 54px rgba(0,0,0,.38)!important;
+}
+html[data-vaigo-theme="black"] .ws-app .location-row,
+html[data-vaigo-theme="black"] body[data-mood="day"] .ws-app .location-row{background:#15171D!important;border-color:#292C35!important;box-shadow:none!important}
+html[data-vaigo-theme="black"] .ws-app .location-input,
+html[data-vaigo-theme="black"] body[data-mood="day"] .ws-app .location-input{color:#F3F4F7!important}
+html[data-vaigo-theme="black"] .ws-app .location-input::placeholder{color:#747C89!important}
+html[data-vaigo-theme="black"] .ws-app .row-btn{color:#A0A8B4!important}
+html[data-vaigo-theme="black"] .ws-app .row-btn:active{background:#22242C!important}
+html[data-vaigo-theme="black"] .ws-app .chip-shortcut,
+html[data-vaigo-theme="black"] body[data-mood="day"] .ws-app .chip-shortcut{background:#14161B!important;color:#DEE1E7!important;border-color:#292C35!important}
+html[data-vaigo-theme="black"] .ws-app .map-btn,
+html[data-vaigo-theme="black"] .ws-app .quick,
+html[data-vaigo-theme="black"] .ws-app .nav-stack-btn,
+html[data-vaigo-theme="black"] .ws-app .nav-audio-toggle{background:rgba(13,14,18,.96)!important;color:#B7BDC7!important;border-color:#2A2D36!important;box-shadow:0 9px 24px rgba(0,0,0,.32)!important}
+html[data-vaigo-theme="black"] .ws-app .nav-stack-btn.active,
+html[data-vaigo-theme="black"] .ws-app .nav-audio-toggle.active,
+html[data-vaigo-theme="black"] .ws-app .map-btn.active{background:#1C1B35!important;color:#A8A6FF!important;border-color:#37345C!important}
+html[data-vaigo-theme="black"] .ws-app .segment,
+html[data-vaigo-theme="black"] .ws-app .travel{background:#16181E!important;border-color:#292C35!important}
+html[data-vaigo-theme="black"] .ws-app .segment button,
+html[data-vaigo-theme="black"] .ws-app .travel button{color:#929AA7!important}
+html[data-vaigo-theme="black"] .ws-app .segment button.active,
+html[data-vaigo-theme="black"] .ws-app .travel button.active{background:#252633!important;color:#E2E2FF!important;border-color:#3A3957!important;box-shadow:none!important}
+html[data-vaigo-theme="black"] .ws-app .route-variant,
+html[data-vaigo-theme="black"] .ws-app .route-card,
+html[data-vaigo-theme="black"] .ws-app .parking-nearby,
+html[data-vaigo-theme="black"] .ws-app .route-insight{background:#15171D!important;border-color:#292C36!important;color:#E9EBEF!important}
+html[data-vaigo-theme="black"] .ws-app .route-variant.active{background:#1D1B38!important;border-color:#45427A!important}
+html[data-vaigo-theme="black"] .ws-app .sheet h2,
+html[data-vaigo-theme="black"] .ws-app .sheet h3{color:#F4F5F8!important}
+html[data-vaigo-theme="black"] .ws-app .sheet p,
+html[data-vaigo-theme="black"] .ws-app .sheet small{color:#969EAA!important}
+html[data-vaigo-theme="black"] .ws-app .drawer-link{color:#D9DDE4!important}
+html[data-vaigo-theme="black"] .ws-app .drawer-link:hover{background:#191B22!important}
+html[data-vaigo-theme="black"] .ws-app .drawer-divider{background:#252832!important}
+html[data-vaigo-theme="black"] .ws-app .search-results,
+html[data-vaigo-theme="black"] body[data-mood="day"] .ws-app .search-results{background:#111218!important;color:#F3F4F7!important;border-color:#292C35!important;box-shadow:0 24px 60px rgba(0,0,0,.46)!important}
+html[data-vaigo-theme="black"] .ws-app .search-label{color:#9098A5!important;border-bottom-color:#242730!important}
+html[data-vaigo-theme="black"] .ws-app .search-item{color:#F1F2F5!important}
+html[data-vaigo-theme="black"] .ws-app .search-item:hover,
+html[data-vaigo-theme="black"] .ws-app .search-item:active{background:#1A1B27!important}
+html[data-vaigo-theme="black"] .ws-app .result-icon{background:#1D1C36!important;color:#9896FF!important}
+html[data-vaigo-theme="black"] .ws-app .result-copy b{color:#F0F2F5!important}
+html[data-vaigo-theme="black"] .ws-app .result-address,
+html[data-vaigo-theme="black"] .ws-app .result-copy small{color:#8E97A5!important}
+html[data-vaigo-theme="black"] .ws-app .result-meta{color:#A1A8B4!important;border-color:#2A2D36!important;background:#17191F!important}
+html[data-vaigo-theme="black"] .ws-app .search-message{color:#929AA7!important}
+
+/* Navigation black glass */
+html[data-vaigo-theme="black"] .body-nav .nav-maneuver-top,
+html[data-vaigo-theme="black"] .body-nav .nav-street-chip,
+html[data-vaigo-theme="black"] .body-nav .nav-panel.nav-minimal{background:rgba(10,11,15,.94)!important;border-color:rgba(255,255,255,.09)!important;box-shadow:0 14px 38px rgba(0,0,0,.36)!important}
+html[data-vaigo-theme="black"] .body-nav .nav-maneuver-copy b,
+html[data-vaigo-theme="black"] .body-nav .nav-street-chip span{color:#F2F3F6!important}
+html[data-vaigo-theme="black"] .body-nav .nav-maneuver-copy span,
+html[data-vaigo-theme="black"] .body-nav .nav-maneuver-copy small{color:#969EAA!important}
+html[data-vaigo-theme="black"] .body-nav .nav-recalc-btn,
+html[data-vaigo-theme="black"] .body-nav .nav-summary-item{background:#17191F!important;border-color:#292C35!important;color:#E4E7EC!important}
+html[data-vaigo-theme="black"] .body-nav .nav-summary-item strong{color:#F1F2F5!important}
+html[data-vaigo-theme="black"] .body-nav .nav-summary-item small{color:#8F98A6!important}
+html[data-vaigo-theme="black"] .body-nav .floating-speedo{background:conic-gradient(from 210deg,#5B5CE2 0deg var(--speed-angle),#292C35 var(--speed-angle) 300deg,transparent 300deg 360deg)!important}
+html[data-vaigo-theme="black"] .body-nav .floating-speedo:after{background:#101116!important;box-shadow:inset 0 0 0 1px #2B2E37!important}
+html[data-vaigo-theme="black"] .body-nav .floating-speedo strong{color:#F3F4F7!important}
+html[data-vaigo-theme="black"] .body-nav .floating-speedo span{color:#8D96A4!important}
+html[data-vaigo-theme="black"] .mapboxgl-popup-content{background:#111218!important;color:#F4F5F8!important;border:1px solid #2B2E37!important;box-shadow:0 18px 48px rgba(0,0,0,.42)!important}
+html[data-vaigo-theme="black"] .mapboxgl-popup-tip{border-top-color:#111218!important;border-bottom-color:#111218!important}
+
+/* ---------- Auth: same VAIGO purple, no orange brand residue ---------- */
+.sparker-entry .auth-copy h1 span,
+.sparker-entry .auth-actions-head>span,
+.sparker-entry .auth-legal a,
+.sparker-entry .sheet-switch a{color:#5B5CE2!important}
+.sparker-entry .auth-brandline img{filter:drop-shadow(0 0 12px rgba(91,92,226,.28))!important}
+.sparker-entry .city-route-badge svg{color:#706DF2!important}
+.sparker-entry .auth-choice.primary,
+.sparker-entry .sheet-submit{background:linear-gradient(135deg,#706DF2,#5B5CE2)!important;color:#fff!important;border-color:transparent!important;box-shadow:0 12px 30px rgba(91,92,226,.22)!important}
+.sparker-entry .city-art:where(:not(.no-purple-route))::after{pointer-events:none}
+/* Purple route overlay aligned over the hero photo; keeps the source photo untouched. */
+.sparker-entry .city-art .vaigo-login-route{position:absolute;inset:0;z-index:3;width:100%;height:100%;pointer-events:none;filter:drop-shadow(0 0 7px rgba(91,92,226,.55))}
+.sparker-entry .city-art .vaigo-login-route path.route-halo{fill:none;stroke:#5B5CE2;stroke-width:22;stroke-linecap:round;stroke-linejoin:round;opacity:.10}
+.sparker-entry .city-art .vaigo-login-route path.route-main{fill:none;stroke:url(#vaigoLoginRouteGradient);stroke-width:7;stroke-linecap:round;stroke-linejoin:round;opacity:.96}
+
+/* Auth black follows the selected global theme. */
+html[data-vaigo-theme="black"] body:has(.sparker-entry),
+html[data-vaigo-theme="black"] .sparker-entry{background:#07070A!important}
+html[data-vaigo-theme="black"] .auth-screen{background:#090A0E!important;border-color:#252832!important;box-shadow:0 30px 90px rgba(0,0,0,.52)!important}
+html[data-vaigo-theme="black"] .auth-copy h1,
+html[data-vaigo-theme="black"] .auth-brandline{color:#F4F5F8!important}
+html[data-vaigo-theme="black"] .auth-copy p{color:#989FAC!important}
+html[data-vaigo-theme="black"] .auth-actions{background:#0D0E13!important;border-color:#242630!important}
+html[data-vaigo-theme="black"] .auth-actions-head h2{color:#F3F4F7!important}
+html[data-vaigo-theme="black"] .auth-actions-head p{color:#969EAB!important}
+html[data-vaigo-theme="black"] .auth-choice.secondary,
+html[data-vaigo-theme="black"] .auth-guest{background:#15171D!important;color:#ECEEF2!important;border-color:#2A2D36!important}
+html[data-vaigo-theme="black"] .auth-divider{color:#777F8C!important}
+html[data-vaigo-theme="black"] .auth-divider:before,
+html[data-vaigo-theme="black"] .auth-divider:after{background:#2B2D36!important}
+html[data-vaigo-theme="black"] .auth-legal{color:#747D8A!important}
+html[data-vaigo-theme="black"] .sheet-card{background:#111218!important;color:#F3F4F7!important;border-color:#2B2E37!important}
+html[data-vaigo-theme="black"] .sheet-head h2{color:#F3F4F7!important}
+html[data-vaigo-theme="black"] .sheet-head p{color:#8E97A5!important}
+html[data-vaigo-theme="black"] .sheet-input,
+html[data-vaigo-theme="black"] .sheet-select{background:#0B0C10!important;color:#F3F4F7!important;border-color:#2A2D36!important}
+html[data-vaigo-theme="black"] .sheet-close,
+html[data-vaigo-theme="black"] .password-toggle{color:#A2A9B5!important}
+
+/* ---------- Onboarding / profile branding cleanup ---------- */
+.onboard .step-pill,.onboard .ob-head .eyebrow{color:#8583FA!important}
+.onboard .ob-progress i{background:linear-gradient(90deg,#8B88FF,#5B5CE2)!important;box-shadow:0 0 15px rgba(91,92,226,.34)!important}
+.onboard .ob-head .eyebrow i{background:#5B5CE2!important;box-shadow:0 0 0 5px rgba(91,92,226,.10)!important}
+.onboard .ob-section-title .ico{background:rgba(91,92,226,.10)!important;border-color:rgba(91,92,226,.16)!important;color:#8F8DFF!important}
+.onboard .choice input:checked+label,
+.onboard .pref input:checked+label{border-color:rgba(91,92,226,.48)!important;background:rgba(91,92,226,.075)!important}
+.onboard .choice input:checked+label i,
+.onboard .pref input:checked+label .pref-icon{color:#8F8DFF!important}
+.onboard .pref input:checked+label .radio-dot{border-color:#706DF2!important}
+.onboard .pref input:checked+label .radio-dot:after{background:#5B5CE2!important}
+.onboard .switch input:checked+.slider{background:#5B5CE2!important}
+.onboard .presence-consent{border-color:rgba(91,92,226,.18)!important;background:rgba(91,92,226,.055)!important}
+.onboard .presence-consent input{accent-color:#5B5CE2!important}
+.onboard .ob-submit{box-shadow:0 13px 32px rgba(91,92,226,.20)!important}
+.onboard .spark-mini img{filter:drop-shadow(0 0 13px rgba(91,92,226,.28))!important}
+
+html[data-vaigo-theme="light"] .onboard{background:#F4F5F8!important;color:#182033!important}
+html[data-vaigo-theme="light"] .onboard .spark-mini{color:#182033!important}
+html[data-vaigo-theme="light"] .onboard .ob-head h1{color:#182033!important}
+html[data-vaigo-theme="light"] .onboard .ob-head h1 span{color:#697386!important}
+html[data-vaigo-theme="light"] .onboard .ob-head p{color:#697386!important}
+html[data-vaigo-theme="light"] .onboard .ob-section{background:#fff!important;border-color:#E1E5ED!important;box-shadow:0 10px 26px rgba(28,34,62,.05)!important}
+html[data-vaigo-theme="light"] .onboard .ob-section-title b{color:#263047!important}
+html[data-vaigo-theme="light"] .onboard .ob-section-title span{color:#778195!important}
+html[data-vaigo-theme="light"] .onboard .input,
+html[data-vaigo-theme="light"] .onboard .select,
+html[data-vaigo-theme="light"] .onboard .choice label,
+html[data-vaigo-theme="light"] .onboard .pref label,
+html[data-vaigo-theme="light"] .onboard .night-card{background:#F8F9FC!important;color:#182033!important;border-color:#E1E5ED!important}
+html[data-vaigo-theme="light"] .onboard .choice label b,
+html[data-vaigo-theme="light"] .onboard .pref label b,
+html[data-vaigo-theme="light"] .onboard .night-card b{color:#263047!important}
+html[data-vaigo-theme="light"] .onboard .field label{color:#566176!important}
+html[data-vaigo-theme="light"] .onboard .input,
+html[data-vaigo-theme="light"] .onboard .select{color:#182033!important}
+
+/* ---------- Responsiveness: all device classes ---------- */
+html,body{min-width:0;max-width:100%;overflow-x:hidden}
+img,svg,video,canvas{max-width:100%}
+.container{width:min(1180px,calc(100% - 32px));margin-inline:auto}
+.page{min-width:0}
+
+/* Small phones: prevent cramped two-column controls and oversized titles. */
+@media (max-width:359px){
+  .container{width:min(100% - 20px,1180px)}
+  .page{padding-top:18px!important}
+  .page-title{font-size:clamp(25px,9vw,32px)!important}
+  .profile-hero{gap:9px!important;padding:11px!important}.profile-avatar{width:50px!important;height:50px!important}
+  .fuel-list{grid-template-columns:1fr!important}.style-choices{grid-template-columns:1fr!important}
+  .vaigo-theme-setting{align-items:flex-start;flex-direction:column}.vaigo-theme-toggle{width:100%}
+  .ws-app .search-card{left:7px!important;right:58px!important}.ws-app .header{right:7px!important}
+  .body-nav .nav-summary-row{grid-template-columns:repeat(3,1fr) 44px!important}.body-nav .nav-search-btn{width:44px!important}
+}
+
+/* Phones / portrait: comfortable single column. */
+@media (max-width:699px){
+  .container{width:min(100% - 24px,1180px)}
+  .page-head{gap:12px!important;align-items:flex-start!important}
+  .page-head>.btn{flex:0 0 auto}
+  .profile-shell,.faq-shell{width:100%;max-width:100%!important}
+  .profile-detail summary{min-height:58px;height:auto!important;padding-block:10px!important}
+  .vaigo-theme-setting{min-height:68px}
+  .sparker-entry .auth-screen{width:100%!important;max-width:520px!important}
+}
+
+/* Short landscape phones: keep route and auth usable without vertical clipping. */
+@media (max-width:899px) and (orientation:landscape) and (max-height:520px){
+  .topbar{height:56px!important}.page{padding-top:14px!important;padding-bottom:72px!important}
+  .mobile-dock{height:54px!important}
+  .sparker-entry{overflow:auto!important}.sparker-entry .auth-screen{min-height:620px!important;height:auto!important}
+  .body-nav .nav-maneuver-top{top:7px!important;left:7px!important;right:auto!important;width:min(430px,58vw)!important}
+  .body-nav .nav-panel.nav-minimal{left:7px!important;right:auto!important;width:min(500px,66vw)!important;bottom:7px!important}
+  .body-nav .nav-street-chip{left:7px!important;right:auto!important;width:min(390px,52vw)!important;bottom:78px!important}
+  .body-nav .nav-control-stack{right:8px!important;bottom:180px!important}.body-nav .nav-audio-toggle{right:8px!important;bottom:128px!important}.body-nav .floating-speedo{right:8px!important;bottom:64px!important}
+}
+
+/* Tablet portrait: widen content intelligently instead of stretching cards. */
+@media (min-width:700px) and (max-width:1099px){
+  .container{width:min(100% - 48px,980px)}
+  .profile-shell{max-width:900px!important}.faq-shell{max-width:900px!important}
+  .profile-hero{padding:18px!important}.profile-avatar{width:72px!important;height:72px!important}
+  .settings-grid{grid-template-columns:1fr 1fr!important}.settings-grid .full{grid-column:1/-1!important}
+  .profile-links{grid-template-columns:repeat(2,minmax(0,1fr))!important}.profile-links .profile-link:last-child:nth-child(odd){grid-column:1/-1}
+}
+
+/* Desktop/large tablet: content grids use width, but text remains readable. */
+@media (min-width:1100px){
+  .container{width:min(1180px,calc(100% - 64px))}
+  .profile-shell{max-width:1040px!important}
+  .profile-hero{padding:20px!important}.profile-avatar{width:78px!important;height:78px!important}
+  .profile-links{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .faq-shell{max-width:980px!important}
+  .faq{grid-template-columns:1fr 1fr;align-items:start}.faq details{min-width:0}
+}
+
+/* Very large desktop: never scale the UI endlessly. */
+@media (min-width:1600px){
+  .container{max-width:1280px}
+  .profile-shell{max-width:1120px!important}
+  .auth-screen{max-width:1240px!important}
+}
+
+/* Touch/coarse input: consistent targets. */
+@media (pointer:coarse){
+  button,.btn,a.btn,.profile-link,.drawer-link{min-height:44px}
+  input,select,textarea{font-size:16px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
+/* Remaining themed components */
+html[data-vaigo-theme="black"] .mobile-dock{background:rgba(9,10,13,.96)!important;border-color:#252832!important;box-shadow:0 -12px 32px rgba(0,0,0,.30)!important}
+html[data-vaigo-theme="black"] .mobile-dock a{color:#8F97A4!important}
+html[data-vaigo-theme="black"] .mobile-dock a:hover,
+html[data-vaigo-theme="black"] .mobile-dock a.active{color:#A7A5FF!important;background:#181826!important}
+html[data-vaigo-theme="black"] .place-card,
+html[data-vaigo-theme="black"] .fuel-choice,
+html[data-vaigo-theme="black"] .family-person,
+html[data-vaigo-theme="black"] .style-choice{background:#15171D!important;border-color:#292C35!important}
+html[data-vaigo-theme="black"] .place-card b,
+html[data-vaigo-theme="black"] .family-person .copy b,
+html[data-vaigo-theme="black"] .style-choice b{color:#EFF1F4!important}
+html[data-vaigo-theme="black"] .family-person .pic{background:#20222A!important}
+html[data-vaigo-theme="black"] .family-person .copy span,
+html[data-vaigo-theme="black"] .style-choice span,
+html[data-vaigo-theme="black"] .map-style-note,
+html[data-vaigo-theme="black"] .emergency-note,
+html[data-vaigo-theme="black"] .family-note,
+html[data-vaigo-theme="black"] .privacy-note{color:#8F98A6!important}
+html[data-vaigo-theme="black"] .style-preview{background:#0C0D11!important;border-color:#2B2E37!important}
+html[data-vaigo-theme="black"] .style-select,
+html[data-vaigo-theme="black"] .mood-legend em{background:#20222A!important;color:#A4ABB6!important}
+html[data-vaigo-theme="black"] .style-choice:has(input:checked){background:#1C1B35!important;border-color:#45427A!important;box-shadow:0 0 0 3px rgba(91,92,226,.08)!important}
+html[data-vaigo-theme="black"] .style-choice:has(input:checked) .style-select{background:#302E55!important;color:#D0CFFF!important}
+html[data-vaigo-theme="black"] .invite-box button,
+html[data-vaigo-theme="black"] .invite-main{background:#1D1C36!important;color:#B6B4FF!important;border-color:#39375E!important}
+
+/* Splash and hero route always use VAIGO purple, not legacy orange. */
+.sparker-splash .splash-route{filter:drop-shadow(0 0 7px rgba(91,92,226,.92)) drop-shadow(0 0 24px rgba(112,109,242,.42))!important}
+.sparker-splash .splash-route .route-halo{stroke:#5B5CE2!important}
+.sparker-splash .splash-tag{color:#706DF2!important}
+.sparker-splash .splash-mark{filter:drop-shadow(0 0 18px rgba(91,92,226,.34))!important}
+.sparker-splash .splash-puck:after{background:#5B5CE2!important;box-shadow:0 0 10px rgba(91,92,226,.65)!important}
+html[data-vaigo-theme="black"] .city-art:before{background:linear-gradient(180deg,#090A0E 0%,rgba(9,10,14,.50) 42%,transparent 100%)!important}
+html[data-vaigo-theme="black"] .city-art:after{background:linear-gradient(0deg,#090A0E 0%,rgba(9,10,14,.62) 40%,transparent 100%)!important}
+html[data-vaigo-theme="black"] .city-route-badge{background:rgba(13,14,19,.91)!important;color:#D5D9E0!important;border-color:#2B2E37!important;box-shadow:0 10px 28px rgba(0,0,0,.28)!important}
+
+/* In light mode the entry uses neutral white/gray; purple stays only on interactive details. */
+html[data-vaigo-theme="light"] body:has(.sparker-entry){background:#F4F5F8!important}
+html[data-vaigo-theme="light"] .sparker-entry{background:#F4F5F8!important}
+
+/* Tablet settings become easier to scan. */
+@media (min-width:760px){
+  #appSettings .detail-body.settings-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
+  #appSettings .settings-field.full{grid-column:1/-1!important}
+  #appSettings .vaigo-theme-setting{padding:14px 15px!important}
+}
+
+/* Small brand polish on auxiliary pages */
+.faq details[open]{border-color:rgba(91,92,226,.28)!important}
+.badge.orange{background:#EEEDFF!important;color:#4E50D8!important;border-color:#D6D6FA!important}
+html[data-vaigo-theme="black"] .badge.orange{background:#1D1C36!important;color:#B6B4FF!important;border-color:#39375E!important}

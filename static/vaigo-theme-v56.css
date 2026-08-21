@@ -1,0 +1,383 @@
+/* ============================================================
+   VAIGO V56 — white + purple system, automatic Black mode
+   Official brand purple: #5B5CE2 / #706DF2
+   ============================================================ */
+:root{
+  --vaigo:#5B5CE2;
+  --vaigo-2:#706DF2;
+  --vaigo-deep:#4546C7;
+  --vaigo-soft:#F0EFFF;
+  --vaigo-soft-2:#F7F6FF;
+  --vaigo-bg:#F6F7FB;
+  --vaigo-card:#FFFFFF;
+  --vaigo-card-2:#FAFAFD;
+  --vaigo-ink:#171A2B;
+  --vaigo-muted:#687386;
+  --vaigo-line:#E3E6EE;
+  --vaigo-line-strong:#D6DAE5;
+  --vaigo-shadow:0 12px 34px rgba(32,38,70,.08);
+  --vaigo-shadow-lg:0 28px 80px rgba(32,38,70,.13);
+  --vaigo-radius:18px;
+  /* Legacy aliases: old orange branding becomes VAIGO purple. Traffic/alerts
+     that use dedicated hard-coded warning colors remain functional. */
+  --orange:#5B5CE2;
+  --orange-2:#706DF2;
+  --orange-3:#A8A6FF;
+  --bg:#F6F7FB;
+  --surface:#FFFFFF;
+  --surface-2:#F8F9FC;
+  --surface-3:#F0F2F7;
+  --text:#171A2B;
+  --muted:#687386;
+  --muted-2:#8891A1;
+  --line:#E3E6EE;
+  --shadow:var(--vaigo-shadow);
+}
+html{background:var(--vaigo-bg)}
+html,body{max-width:100%;overflow-x:hidden}
+body{background:var(--vaigo-bg)!important;background-image:none!important;color:var(--vaigo-ink)!important}
+body:before{display:none!important}
+
+/* ---------- Global light surfaces ---------- */
+html[data-vaigo-theme="light"] .topbar{
+  background:rgba(255,255,255,.90)!important;border-bottom:1px solid rgba(215,219,230,.86)!important;
+  box-shadow:0 8px 28px rgba(30,36,70,.055)!important;backdrop-filter:blur(22px) saturate(135%)!important;
+}
+html[data-vaigo-theme="light"] .brand,
+html[data-vaigo-theme="light"] .page-title,
+html[data-vaigo-theme="light"] .title,
+html[data-vaigo-theme="light"] h1,
+html[data-vaigo-theme="light"] h2,
+html[data-vaigo-theme="light"] h3{color:#171A2B!important}
+html[data-vaigo-theme="light"] .navlinks a,
+html[data-vaigo-theme="light"] .navlinks button.navbtn{color:#667185!important}
+html[data-vaigo-theme="light"] .navlinks a:hover,
+html[data-vaigo-theme="light"] .navlinks button.navbtn:hover,
+html[data-vaigo-theme="light"] .navlinks a.active{background:#F0EFFF!important;color:#4A4BC7!important}
+html[data-vaigo-theme="light"] .panel,
+html[data-vaigo-theme="light"] .card,
+html[data-vaigo-theme="light"] .kpi,
+html[data-vaigo-theme="light"] .alert-card,
+html[data-vaigo-theme="light"] .auth-card,
+html[data-vaigo-theme="light"] .profile-hero,
+html[data-vaigo-theme="light"] .profile-card,
+html[data-vaigo-theme="light"] .profile-detail,
+html[data-vaigo-theme="light"] .profile-link,
+html[data-vaigo-theme="light"] .faq details{
+  background:#fff!important;color:#171A2B!important;border-color:#E3E6EE!important;box-shadow:0 10px 28px rgba(34,40,75,.055)!important;
+}
+html[data-vaigo-theme="light"] .panel-head,
+html[data-vaigo-theme="light"] .detail-body{border-color:#E8EAF1!important}
+html[data-vaigo-theme="light"] .page-subtitle,
+html[data-vaigo-theme="light"] .subtitle,
+html[data-vaigo-theme="light"] .muted,
+html[data-vaigo-theme="light"] .tiny{color:#707A8C!important}
+html[data-vaigo-theme="light"] .input,
+html[data-vaigo-theme="light"] .select,
+html[data-vaigo-theme="light"] .textarea,
+html[data-vaigo-theme="light"] .settings-field input,
+html[data-vaigo-theme="light"] .settings-field select,
+html[data-vaigo-theme="light"] .place-card input,
+html[data-vaigo-theme="light"] .invite-box input{
+  background:#FBFBFD!important;color:#171A2B!important;border-color:#DDE1EA!important;box-shadow:none!important;
+}
+html[data-vaigo-theme="light"] .input:focus,
+html[data-vaigo-theme="light"] .select:focus,
+html[data-vaigo-theme="light"] .textarea:focus,
+html[data-vaigo-theme="light"] .settings-field input:focus,
+html[data-vaigo-theme="light"] .settings-field select:focus{
+  border-color:rgba(91,92,226,.62)!important;box-shadow:0 0 0 4px rgba(91,92,226,.09)!important;
+}
+html[data-vaigo-theme="light"] .profile-detail summary .detail-icon,
+html[data-vaigo-theme="light"] .iconbox{background:#F0EFFF!important;color:#5B5CE2!important;border-color:#DFDEFF!important}
+html[data-vaigo-theme="light"] .profile-detail summary .detail-copy span,
+html[data-vaigo-theme="light"] .profile-card-head p,
+html[data-vaigo-theme="light"] .privacy-note,
+html[data-vaigo-theme="light"] .emergency-note,
+html[data-vaigo-theme="light"] .family-note{color:#748093!important}
+html[data-vaigo-theme="light"] .place-card,
+html[data-vaigo-theme="light"] .fuel-choice,
+html[data-vaigo-theme="light"] .family-person,
+html[data-vaigo-theme="light"] .style-choice{background:#FAFAFD!important;border-color:#E4E7EF!important;color:#252A3B!important}
+html[data-vaigo-theme="light"] .style-choice:has(input:checked){background:#F5F4FF!important;border-color:#A9A7FF!important;box-shadow:0 0 0 3px rgba(91,92,226,.07)!important}
+html[data-vaigo-theme="light"] .style-choice:has(input:checked) .style-select{background:#E9E8FF!important;color:#4A4BC7!important}
+html[data-vaigo-theme="light"] .invite-main{background:#EFEEFF!important;color:#4D4ECB!important;border:1px solid #DEDDFF!important}
+html[data-vaigo-theme="light"] .profile-link i{color:#6768E1!important}
+html[data-vaigo-theme="light"] footer{background:#F6F7FB!important;border-color:#E2E5ED!important;color:#7A8495!important}
+html[data-vaigo-theme="light"] .mobile-dock{background:rgba(255,255,255,.94)!important;border-color:#DEE2EB!important;box-shadow:0 14px 38px rgba(29,35,69,.10)!important}
+html[data-vaigo-theme="light"] .mobile-dock a{color:#778195!important}
+html[data-vaigo-theme="light"] .mobile-dock a:hover{background:#F0EFFF!important;color:#4C4DC9!important}
+
+/* ---------- Buttons ---------- */
+.btn-primary,.sheet-submit,.auth-choice.primary{
+  background:linear-gradient(135deg,#706DF2 0%,#5B5CE2 58%,#5051D7 100%)!important;
+  border-color:transparent!important;color:#fff!important;
+  box-shadow:0 12px 28px rgba(91,92,226,.22)!important;
+}
+.btn-primary:hover,.sheet-submit:hover,.auth-choice.primary:hover{filter:brightness(1.025);box-shadow:0 15px 34px rgba(91,92,226,.27)!important}
+.btn:focus-visible,a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid rgba(91,92,226,.24)!important;outline-offset:2px}
+
+/* ---------- Theme selector ---------- */
+.vaigo-theme-setting-v56{display:grid;gap:12px;padding:14px;border:1px solid var(--vaigo-line);border-radius:17px;background:var(--vaigo-card-2)}
+.vaigo-theme-setting-v56 .theme-copy{display:flex;align-items:flex-start;gap:10px}
+.vaigo-theme-setting-v56 .theme-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none;background:#EFEEFF;color:#5B5CE2;border:1px solid #DFDEFF}
+.vaigo-theme-setting-v56 .theme-copy>div{min-width:0;flex:1}
+.vaigo-theme-setting-v56 .theme-copy b{display:block;font-size:11px;color:var(--vaigo-ink)}
+.vaigo-theme-setting-v56 .theme-copy span{display:block;margin-top:4px;color:var(--vaigo-muted);font-size:8.5px;line-height:1.45}
+.vaigo-theme-options{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:5px;background:#ECEEF4;border-radius:14px}
+.vaigo-theme-option{height:40px;border:0;border-radius:10px;background:transparent;color:#697386;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:6px}
+.vaigo-theme-option.active{background:#fff;color:#4B4CC7;box-shadow:0 4px 14px rgba(35,40,70,.10)}
+.vaigo-theme-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;color:#7A8495;font-size:8px;line-height:1.4}
+.vaigo-theme-meta [data-theme-state]{color:#555FC9;font-weight:800}
+
+/* ---------- Black theme ---------- */
+html[data-vaigo-theme="black"]{
+  --vaigo-bg:#07080D;--vaigo-card:#101116;--vaigo-card-2:#15171D;--vaigo-ink:#F4F5F8;--vaigo-muted:#969EAC;--vaigo-line:#272A34;
+  --bg:#07080D;--surface:#101116;--surface-2:#15171D;--surface-3:#1A1C23;--text:#F4F5F8;--muted:#969EAC;--muted-2:#777F8D;--line:#272A34;
+}
+html[data-vaigo-theme="black"],html[data-vaigo-theme="black"] body{background:#07080D!important;color:#F4F5F8!important}
+html[data-vaigo-theme="black"] .vaigo-theme-setting-v56{background:#15171D!important;border-color:#292C36!important}
+html[data-vaigo-theme="black"] .vaigo-theme-setting-v56 .theme-icon{background:#1D1C36!important;color:#A8A6FF!important;border-color:#34325A!important}
+html[data-vaigo-theme="black"] .vaigo-theme-options{background:#0C0D12!important;border:1px solid #252832!important}
+html[data-vaigo-theme="black"] .vaigo-theme-option{color:#8F97A5!important}
+html[data-vaigo-theme="black"] .vaigo-theme-option.active{background:#222333!important;color:#C2C1FF!important;box-shadow:none!important}
+html[data-vaigo-theme="black"] .vaigo-theme-meta{color:#7F8794!important}
+html[data-vaigo-theme="black"] .vaigo-theme-meta [data-theme-state]{color:#A9A7FF!important}
+html[data-vaigo-theme="black"] .mobile-dock{background:rgba(10,11,15,.94)!important;border-color:#292C35!important}
+
+/* ---------- Map app light refinement ---------- */
+html[data-vaigo-theme="light"] body:has(.ws-app){background:#EEF1F7!important}
+html[data-vaigo-theme="light"] .ws-app .search-card,
+html[data-vaigo-theme="light"] .ws-app .sheet,
+html[data-vaigo-theme="light"] .ws-app .destination-confirm,
+html[data-vaigo-theme="light"] .ws-app .account-drawer,
+html[data-vaigo-theme="light"] .ws-app .prefs-drawer,
+html[data-vaigo-theme="light"] .ws-app .safety-drawer{
+  background:rgba(255,255,255,.965)!important;color:#171A2B!important;border-color:rgba(220,224,234,.95)!important;
+  box-shadow:0 18px 48px rgba(28,34,66,.13)!important;
+}
+html[data-vaigo-theme="light"] .ws-app .location-row{background:#F8F9FC!important;border-color:#E2E5ED!important}
+html[data-vaigo-theme="light"] .ws-app .location-input{color:#171A2B!important}
+html[data-vaigo-theme="light"] .ws-app .location-input::placeholder{color:#8A93A2!important}
+html[data-vaigo-theme="light"] .ws-app .chip-shortcut,
+html[data-vaigo-theme="light"] .ws-app .quick,
+html[data-vaigo-theme="light"] .ws-app .map-btn,
+html[data-vaigo-theme="light"] .ws-app .nav-stack-btn,
+html[data-vaigo-theme="light"] .ws-app .nav-audio-toggle{background:#fff!important;color:#5E687A!important;border-color:#E0E4EC!important;box-shadow:0 8px 22px rgba(33,39,71,.09)!important}
+html[data-vaigo-theme="light"] .ws-app .nav-stack-btn.active,
+html[data-vaigo-theme="light"] .ws-app .nav-audio-toggle.active,
+html[data-vaigo-theme="light"] .ws-app .map-btn.active{background:#EFEEFF!important;color:#5152CF!important;border-color:#D6D4FF!important}
+html[data-vaigo-theme="light"] .ws-app .segment,
+html[data-vaigo-theme="light"] .ws-app .travel{background:#F1F3F7!important;border-color:#E1E4EC!important}
+html[data-vaigo-theme="light"] .ws-app .segment button,
+html[data-vaigo-theme="light"] .ws-app .travel button{color:#727D8F!important}
+html[data-vaigo-theme="light"] .ws-app .segment button.active,
+html[data-vaigo-theme="light"] .ws-app .travel button.active{background:#fff!important;color:#5051C9!important;box-shadow:0 3px 10px rgba(36,42,75,.09)!important}
+html[data-vaigo-theme="light"] .ws-app .route-card,
+html[data-vaigo-theme="light"] .ws-app .route-variant,
+html[data-vaigo-theme="light"] .ws-app .parking-nearby,
+html[data-vaigo-theme="light"] .ws-app .route-insight{background:#FAFAFD!important;color:#252A3B!important;border-color:#E2E5ED!important}
+html[data-vaigo-theme="light"] .ws-app .route-variant.active{background:#F0EFFF!important;border-color:#A7A5FF!important}
+html[data-vaigo-theme="light"] .ws-app .drawer-link{color:#32384A!important}
+html[data-vaigo-theme="light"] .ws-app .drawer-link:hover{background:#F3F2FF!important}
+html[data-vaigo-theme="light"] .ws-app .drawer-divider{background:#E7E9F0!important}
+
+/* ---------- Entry / login: white + purple ---------- */
+html[data-vaigo-theme="light"] body:has(.sparker-entry){background:#F4F5FA!important}
+html[data-vaigo-theme="light"] .sparker-entry{background:#F4F5FA!important;color:#171A2B!important}
+html[data-vaigo-theme="light"] .auth-screen{background:#fff!important;border-color:#E2E5ED!important;box-shadow:0 30px 90px rgba(35,41,76,.12)!important}
+html[data-vaigo-theme="light"] .auth-screen:before{background:none!important}
+html[data-vaigo-theme="light"] .auth-copy h1{color:#171A2B!important}
+html[data-vaigo-theme="light"] .auth-copy h1 span{color:#5B5CE2!important}
+html[data-vaigo-theme="light"] .auth-copy p{color:#697487!important}
+html[data-vaigo-theme="light"] .auth-brandline{color:#171A2B!important}
+html[data-vaigo-theme="light"] .auth-brandline span{color:#8A93A3!important}
+html[data-vaigo-theme="light"] .auth-brandline img{filter:drop-shadow(0 7px 16px rgba(91,92,226,.18))!important}
+html[data-vaigo-theme="light"] .city-art:before{background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.68) 34%,transparent 100%)!important}
+html[data-vaigo-theme="light"] .city-art:after{background:linear-gradient(0deg,#fff 0%,rgba(255,255,255,.64) 36%,transparent 100%)!important}
+html[data-vaigo-theme="light"] .city-art img{filter:saturate(.88) contrast(1.02) brightness(1.02)!important}
+html[data-vaigo-theme="light"] .city-route-badge{background:rgba(255,255,255,.90)!important;color:#444B5C!important;border-color:#E1E4ED!important;box-shadow:0 10px 28px rgba(30,36,70,.10)!important}
+html[data-vaigo-theme="light"] .auth-actions{background:#FAFAFD!important;border-color:#E7E9F0!important}
+html[data-vaigo-theme="light"] .auth-actions-head h2{color:#171A2B!important}
+html[data-vaigo-theme="light"] .auth-actions-head p{color:#707B8E!important}
+html[data-vaigo-theme="light"] .auth-choice.secondary,
+html[data-vaigo-theme="light"] .auth-guest{background:#fff!important;color:#2B3041!important;border-color:#DDE1EA!important;box-shadow:none!important}
+html[data-vaigo-theme="light"] .auth-google{background:#fff!important;color:#202431!important;border-color:#DDE1EA!important;box-shadow:0 5px 16px rgba(35,41,70,.045)!important}
+html[data-vaigo-theme="light"] .auth-divider{color:#9098A7!important}
+html[data-vaigo-theme="light"] .auth-divider:before,
+html[data-vaigo-theme="light"] .auth-divider:after{background:#E4E7EE!important}
+html[data-vaigo-theme="light"] .auth-legal{color:#8A93A3!important}
+html[data-vaigo-theme="light"] .sheet-backdrop{background:rgba(20,24,40,.34)!important}
+html[data-vaigo-theme="light"] .sheet-card{background:#fff!important;color:#171A2B!important;border-color:#DFE3EC!important;box-shadow:0 30px 90px rgba(29,35,67,.22)!important}
+html[data-vaigo-theme="light"] .sheet-grab{background:#D4D8E2!important}
+html[data-vaigo-theme="light"] .sheet-head h2{color:#171A2B!important}
+html[data-vaigo-theme="light"] .sheet-head p{color:#747E90!important}
+html[data-vaigo-theme="light"] .sheet-close{background:#F5F6F9!important;color:#6F7889!important;border-color:#E1E4EC!important}
+html[data-vaigo-theme="light"] .sheet-field label{color:#555F72!important}
+html[data-vaigo-theme="light"] .sheet-input,
+html[data-vaigo-theme="light"] .sheet-select{background:#F9FAFC!important;color:#171A2B!important;border-color:#DDE1EA!important}
+html[data-vaigo-theme="light"] .sheet-input:focus,
+html[data-vaigo-theme="light"] .sheet-select:focus{border-color:rgba(91,92,226,.62)!important;box-shadow:0 0 0 4px rgba(91,92,226,.08)!important}
+html[data-vaigo-theme="light"] .sheet-switch{color:#7B8495!important}
+
+/* Purple line exactly follows the official VAIGO palette. */
+.sparker-entry .city-art .vaigo-login-route{filter:drop-shadow(0 0 8px rgba(91,92,226,.50))!important}
+.sparker-entry .city-art .vaigo-login-route path.route-halo{stroke:#5B5CE2!important;opacity:.12!important}
+.sparker-entry .city-art .vaigo-login-route path.route-main{stroke:url(#vaigoLoginRouteGradient)!important;opacity:.98!important}
+.sparker-entry .splash-route{filter:drop-shadow(0 0 9px rgba(91,92,226,.72))!important}
+.sparker-entry .splash-route .route-halo{stroke:#5B5CE2!important;opacity:.10!important}
+.sparker-entry .splash-mark{filter:drop-shadow(0 0 18px rgba(91,92,226,.34))!important}
+.sparker-entry .splash-tag{color:#8E8CFF!important}
+.sparker-entry .splash-puck:after{background:#5B5CE2!important;box-shadow:0 0 12px rgba(91,92,226,.62)!important}
+.sparker-entry .sparker-splash:after{background:linear-gradient(90deg,#5B5CE2,#8B88FF,#5B5CE2)!important;box-shadow:0 0 10px rgba(91,92,226,.55)!important}
+
+/* ---------- Responsive polish ---------- */
+@media (max-width:699px){
+  .container,.nav{width:calc(100% - 20px)!important}
+  .topbar{height:58px!important}
+  .page{padding:18px 0 82px!important}
+  .profile-shell{width:100%!important}
+  .profile-hero,.profile-card,.profile-detail,.profile-link{border-radius:16px!important}
+  .settings-grid,.place-grid{grid-template-columns:1fr!important}
+  .settings-grid .full{grid-column:auto!important}
+  .vaigo-theme-options{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .vaigo-theme-option{height:42px;font-size:8.5px}
+  .sparker-entry .auth-screen{width:100%!important;max-width:520px!important;min-height:100svh!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+  html[data-vaigo-theme="light"] .sparker-entry .auth-screen{background:#fff!important}
+  .auth-copy{padding-top:max(26px,env(safe-area-inset-top))!important}
+  .auth-actions{padding-bottom:max(18px,env(safe-area-inset-bottom))!important}
+}
+
+@media (min-width:700px) and (max-width:1099px){
+  .container{width:min(940px,calc(100% - 36px))!important}
+  .profile-shell{max-width:860px!important}
+  .settings-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .sparker-entry{padding:18px!important}
+  .auth-screen{width:min(1000px,calc(100vw - 36px))!important;height:min(780px,calc(100svh - 36px))!important;min-height:620px!important}
+  .auth-actions{padding:42px 34px!important}
+}
+
+@media (min-width:1100px){
+  .container{width:min(1220px,calc(100% - 56px))!important}
+  .profile-shell{max-width:940px!important}
+  .profile-card,.profile-detail{border-radius:20px!important}
+  .sparker-entry{padding:28px!important}
+  .auth-screen{width:min(1180px,calc(100vw - 56px))!important;height:min(790px,calc(100svh - 56px))!important}
+}
+
+@media (orientation:landscape) and (max-height:620px){
+  .page{padding-top:12px!important}
+  .topbar{height:52px!important}
+  .sparker-entry{padding:10px!important}
+  .auth-screen{height:calc(100svh - 20px)!important;min-height:500px!important}
+  .auth-copy{padding-top:28px!important;padding-bottom:8px!important}
+  .auth-copy h1{font-size:38px!important}
+  .auth-actions{padding-top:24px!important;padding-bottom:24px!important}
+}
+
+@media (pointer:coarse){
+  button,.btn,a.auth-choice,a.auth-google,a.auth-guest,.profile-link{min-height:44px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
+/* Entry information density: useful, not noisy. */
+.auth-proof{display:flex;flex-wrap:wrap;gap:7px;margin-top:15px}
+.auth-proof span{min-height:29px;display:inline-flex;align-items:center;gap:5px;padding:0 9px;border-radius:999px;font-size:7.5px;font-weight:820;letter-spacing:.01em}
+html[data-vaigo-theme="light"] .auth-proof span{background:#F4F4FF;color:#5657C9;border:1px solid #E2E1FF}
+html[data-vaigo-theme="black"] .auth-proof span{background:#19192C;color:#B1AFFF;border:1px solid #302F52}
+.auth-logout-note{display:flex;align-items:center;gap:9px;padding:11px 12px;border-radius:14px;margin-bottom:4px}
+.auth-logout-note b{display:block;font-size:10px}.auth-logout-note span{display:block;margin-top:2px;font-size:8px}
+html[data-vaigo-theme="light"] .auth-logout-note{background:#F0FAF6;border:1px solid #D7EFE4;color:#237555}
+html[data-vaigo-theme="light"] .auth-logout-note span{color:#56836F}
+html[data-vaigo-theme="black"] .auth-logout-note{background:#10221B;border:1px solid #204735;color:#70D6A5}
+html[data-vaigo-theme="black"] .auth-logout-note span{color:#79A993}
+@media(max-width:430px){.auth-proof{gap:5px;margin-top:11px}.auth-proof span{font-size:7px;padding:0 7px;min-height:26px}}
+
+/* Shared/live route pages also follow the same day/night system. */
+html[data-vaigo-theme="light"] .share-app,
+html[data-vaigo-theme="light"] body:has(.share-app),
+html[data-vaigo-theme="light"] .app,
+html[data-vaigo-theme="light"] body:has(.app){background:#F6F7FB!important;color:#171A2B!important}
+html[data-vaigo-theme="light"] .share-app .pill,
+html[data-vaigo-theme="light"] .share-app .bottom,
+html[data-vaigo-theme="light"] .app .brand,
+html[data-vaigo-theme="light"] .app .status,
+html[data-vaigo-theme="light"] .app .card{background:rgba(255,255,255,.94)!important;color:#171A2B!important;border-color:#E0E4EC!important;box-shadow:0 16px 40px rgba(34,40,72,.12)!important}
+html[data-vaigo-theme="light"] .share-app .pill span,
+html[data-vaigo-theme="light"] .share-app .route-label small,
+html[data-vaigo-theme="light"] .app .card p,
+html[data-vaigo-theme="light"] .app .privacy,
+html[data-vaigo-theme="light"] .app .stat span{color:#747F91!important}
+html[data-vaigo-theme="light"] .app .stat{background:#F8F9FC!important;border-color:#E2E5ED!important}
+html[data-vaigo-theme="light"] .share-app .veil,
+html[data-vaigo-theme="light"] .app .veil{background:linear-gradient(180deg,rgba(246,247,251,.18),transparent 24%,transparent 72%,rgba(246,247,251,.24))!important}
+.sparker-entry .sparker-splash:before{
+  background:linear-gradient(180deg,rgba(5,6,12,.28) 0%,rgba(5,6,12,.42) 34%,rgba(5,6,12,.64) 72%,#07080D 100%),url('/static/auth-city-route-vaigo-v56.webp') center 49%/cover no-repeat!important;
+}
+
+/* ---------- Onboarding: same white/purple language ---------- */
+html[data-vaigo-theme="light"] body:has(.onboard){background:#F6F7FB!important}
+html[data-vaigo-theme="light"] .onboard{background:#F6F7FB!important;color:#171A2B!important}
+html[data-vaigo-theme="light"] .spark-mini{color:#171A2B!important}
+html[data-vaigo-theme="light"] .spark-mini img{filter:drop-shadow(0 8px 16px rgba(91,92,226,.18))!important}
+html[data-vaigo-theme="light"] .step-pill{color:#5556CB!important;background:#EFEEFF!important;border-color:#DEDDFF!important}
+html[data-vaigo-theme="light"] .ob-progress{background:#E6E8EF!important}
+html[data-vaigo-theme="light"] .ob-head h1{color:#171A2B!important}
+html[data-vaigo-theme="light"] .ob-head h1 span{color:#6D7789!important}
+html[data-vaigo-theme="light"] .ob-head p{color:#707B8E!important}
+html[data-vaigo-theme="light"] .ob-section{background:#fff!important;border-color:#E2E5ED!important;box-shadow:0 10px 26px rgba(33,39,73,.05)!important}
+html[data-vaigo-theme="light"] .ob-section-title b{color:#222738!important}
+html[data-vaigo-theme="light"] .ob-section-title span{color:#758093!important}
+html[data-vaigo-theme="light"] .field label{color:#596477!important}
+html[data-vaigo-theme="light"] .onboard .input,
+html[data-vaigo-theme="light"] .onboard .select{background:#F9FAFC!important;color:#171A2B!important;border-color:#DDE1EA!important}
+html[data-vaigo-theme="light"] .onboard .input::placeholder{color:#9AA2AF!important}
+html[data-vaigo-theme="light"] .choice label,
+html[data-vaigo-theme="light"] .pref label,
+html[data-vaigo-theme="light"] .night-card{background:#FAFAFD!important;border-color:#E2E5ED!important}
+html[data-vaigo-theme="light"] .choice label b,
+html[data-vaigo-theme="light"] .pref label b,
+html[data-vaigo-theme="light"] .night-card b{color:#252A3B!important}
+html[data-vaigo-theme="light"] .choice label span,
+html[data-vaigo-theme="light"] .pref label span,
+html[data-vaigo-theme="light"] .night-card span{color:#748093!important}
+html[data-vaigo-theme="light"] .choice input:checked+label,
+html[data-vaigo-theme="light"] .pref input:checked+label{background:#F2F1FF!important;border-color:#A7A5FF!important}
+html[data-vaigo-theme="light"] .choice input:checked+label i,
+html[data-vaigo-theme="light"] .pref input:checked+label .pref-icon{color:#5B5CE2!important}
+html[data-vaigo-theme="light"] .pref input:checked+label .pref-icon{background:#E9E8FF!important}
+html[data-vaigo-theme="light"] .pref input:checked+label .radio-dot{border-color:#5B5CE2!important}
+html[data-vaigo-theme="light"] .pref input:checked+label .radio-dot:after{background:#5B5CE2!important}
+html[data-vaigo-theme="light"] .switch input:checked+.slider{background:#5B5CE2!important}
+html[data-vaigo-theme="light"] .mini-note{background:#F6F7FA!important;color:#7B8495!important}
+html[data-vaigo-theme="light"] .presence-consent{background:#F6F5FF!important;border-color:#DDDBFF!important}
+html[data-vaigo-theme="light"] .presence-consent input{accent-color:#5B5CE2!important}
+html[data-vaigo-theme="light"] .presence-consent b{color:#33384A!important}
+html[data-vaigo-theme="light"] .presence-consent span span{color:#778195!important}
+html[data-vaigo-theme="light"] .privacy-note{background:#F3F7FF!important;border-color:#DEE8FA!important;color:#68758A!important}
+html[data-vaigo-theme="light"] .privacy-note b{color:#384156!important}
+html[data-vaigo-theme="light"] .vehicle-hint i{color:#5B5CE2!important}
+html[data-vaigo-theme="light"] .fine{color:#8891A1!important}
+
+/* ---------- Generic data/admin screens ---------- */
+html[data-vaigo-theme="light"] .table th{color:#707B8D!important;border-color:#E4E7EE!important;background:#FAFAFC!important}
+html[data-vaigo-theme="light"] .table td{color:#303648!important;border-color:#E8EAF0!important}
+html[data-vaigo-theme="light"] .table tr:hover td{background:#F8F8FF!important}
+html[data-vaigo-theme="light"] .badge{background:#F3F4F8!important;color:#606B7E!important;border-color:#E0E4EC!important}
+html[data-vaigo-theme="light"] .badge.orange{background:#EFEEFF!important;color:#5455CA!important;border-color:#DAD8FF!important}
+html[data-vaigo-theme="light"] .flash{background:rgba(255,255,255,.97)!important;color:#2C3244!important;border-color:#E1E4EC!important;box-shadow:0 14px 38px rgba(30,36,68,.12)!important}
+html[data-vaigo-theme="light"] .empty{color:#7A8496!important}
+html[data-vaigo-theme="light"] .code-num{color:#5B5CE2!important}
+
+/* V56 splash: intentionally minimal — VAIGO mark only. */
+.sparker-entry .sparker-splash{background:#F7F8FC!important}
+html[data-vaigo-theme="black"] .sparker-entry .sparker-splash{background:#07080D!important}
+.sparker-entry .sparker-splash:before,.sparker-entry .sparker-splash:after,
+.sparker-entry .splash-map,.sparker-entry .splash-route,.sparker-entry .splash-word,
+.sparker-entry .splash-tag,.sparker-entry .splash-puck{display:none!important}
+.sparker-entry .splash-center{transform:none!important;animation:none!important;display:grid;place-items:center}
+.sparker-entry .splash-mark{width:92px!important;margin:0!important;filter:drop-shadow(0 12px 28px rgba(91,92,226,.20))!important;animation:vaigoMarkV56 .58s cubic-bezier(.2,.8,.2,1) both!important}
+html[data-vaigo-theme="black"] .sparker-entry .splash-mark{filter:drop-shadow(0 0 24px rgba(91,92,226,.30))!important}
+@keyframes vaigoMarkV56{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
