@@ -6507,6 +6507,12 @@ def start_keepalive_worker():
         return True
 
 
+
+# VAIGO_ANDROID_MOBILE_BRIDGE_V1
+from mobile_routes import register_mobile_routes as _register_vaigo_mobile_routes
+_register_vaigo_mobile_routes(app, globals())
+# /VAIGO_ANDROID_MOBILE_BRIDGE_V1
+
 start_keepalive_worker()
 
 
