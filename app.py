@@ -17,6 +17,412 @@ from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse, urlencode
 
 import requests
+
+# VAIGO V67.2 — database backend embedded directly in app.py.
+# This intentionally avoids a runtime dependency on a sibling db_backend.py file
+# so Render/GitHub deployments cannot fail with ModuleNotFoundError if that file
+# is omitted or uploaded into the wrong directory.
+from typing import Iterable, Optional
+
+try:
+    import psycopg
+    from psycopg import IntegrityError as PostgresIntegrityError
+    from psycopg.rows import dict_row
+except ImportError:  # local SQLite-only development before requirements install
+    psycopg = None
+    dict_row = None
+
+    class PostgresIntegrityError(Exception):
+        pass
+
+
+DB_INTEGRITY_ERRORS = (sqlite3.IntegrityError, PostgresIntegrityError)
+
+
+def is_postgres_url(database_url: str | None) -> bool:
+    url = (database_url or "").strip().lower()
+    return url.startswith("postgres://") or url.startswith("postgresql://")
+
+
+def _translate_postgres_sql(sql: str) -> str:
+    """Translate the small SQLite dialect surface used by the existing app."""
+    converted = sql
+
+    # SQLite's OFFSET-without-limit idiom.
+    converted = re.sub(r"\bLIMIT\s+-1\s+OFFSET\s+(\d+)", r"OFFSET \1", converted, flags=re.I)
+
+    # One-time OAuth state upsert.
+    if re.search(r"\bINSERT\s+OR\s+REPLACE\s+INTO\s+oauth_states\b", converted, flags=re.I):
+        converted = re.sub(r"\bINSERT\s+OR\s+REPLACE\s+INTO\b", "INSERT INTO", converted, count=1, flags=re.I)
+        converted += (
+            " ON CONFLICT (state) DO UPDATE SET "
+            "redirect_uri=EXCLUDED.redirect_uri, next_url=EXCLUDED.next_url, "
+            "fingerprint=EXCLUDED.fingerprint, created_at=EXCLUDED.created_at, "
+            "expires_at=EXCLUDED.expires_at"
+        )
+
+    # The app only uses INSERT OR IGNORE for rows protected by UNIQUE constraints.
+    if re.search(r"\bINSERT\s+OR\s+IGNORE\s+INTO\b", converted, flags=re.I):
+        converted = re.sub(r"\bINSERT\s+OR\s+IGNORE\s+INTO\b", "INSERT INTO", converted, count=1, flags=re.I)
+        converted += " ON CONFLICT DO NOTHING"
+
+    # Existing app queries use DB-API qmark placeholders. SQL strings do not use
+    # literal question marks, so this translation is deterministic for this codebase.
+    converted = converted.replace("?", "%s")
+    return converted
+
+
+class PostgresConnection:
+    def __init__(self, database_url: str):
+        if psycopg is None:
+            raise RuntimeError("PostgreSQL support requires psycopg. Run: pip install -r requirements.txt")
+        self._conn = psycopg.connect(database_url, row_factory=dict_row, connect_timeout=10)
+
+    def execute(self, sql: str, params: Optional[Iterable] = None):
+        return self._conn.execute(_translate_postgres_sql(sql), tuple(params or ()))
+
+    def executemany(self, sql: str, params_seq):
+        cur = self._conn.cursor()
+        cur.executemany(_translate_postgres_sql(sql), params_seq)
+        return cur
+
+    def commit(self):
+        return self._conn.commit()
+
+    def rollback(self):
+        return self._conn.rollback()
+
+    def close(self):
+        return self._conn.close()
+
+
+POSTGRES_SCHEMA_STATEMENTS = [
+    """
+    CREATE TABLE IF NOT EXISTS users (
+        id BIGSERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('user','admin')),
+        locale TEXT NOT NULL DEFAULT 'pt-BR',
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        last_login_at TEXT,
+        google_sub TEXT,
+        avatar_url TEXT NOT NULL DEFAULT '',
+        auth_provider TEXT NOT NULL DEFAULT 'password',
+        age INTEGER,
+        sex TEXT NOT NULL DEFAULT '',
+        is_app_driver INTEGER,
+        night_safety_mode INTEGER NOT NULL DEFAULT 1,
+        route_preference TEXT NOT NULL DEFAULT 'balanced',
+        onboarding_completed_at TEXT,
+        distance_unit TEXT NOT NULL DEFAULT 'km',
+        vehicle_make TEXT NOT NULL DEFAULT '',
+        vehicle_model TEXT NOT NULL DEFAULT '',
+        vehicle_plate TEXT NOT NULL DEFAULT '',
+        vehicle_year TEXT NOT NULL DEFAULT '',
+        preferred_fuel_networks TEXT NOT NULL DEFAULT '[]',
+        home_label TEXT NOT NULL DEFAULT '',
+        work_label TEXT NOT NULL DEFAULT '',
+        presence_visible INTEGER NOT NULL DEFAULT 0,
+        presence_terms_accepted_at TEXT,
+        emergency_name TEXT NOT NULL DEFAULT '',
+        emergency_phone TEXT NOT NULL DEFAULT '',
+        map_style TEXT NOT NULL DEFAULT 'vivid'
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS auth_sessions (
+        id BIGSERIAL PRIMARY KEY,
+        token_hash TEXT NOT NULL UNIQUE,
+        user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL,
+        last_used_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        revoked_at TEXT
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS reports (
+        id BIGSERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        category TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        severity INTEGER NOT NULL DEFAULT 3 CHECK(severity BETWEEN 1 AND 5),
+        latitude DOUBLE PRECISION NOT NULL,
+        longitude DOUBLE PRECISION NOT NULL,
+        address TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','resolved','rejected')),
+        created_at TEXT NOT NULL,
+        expires_at TEXT,
+        confirmations INTEGER NOT NULL DEFAULT 0
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS report_confirmations (
+        id BIGSERIAL PRIMARY KEY,
+        report_id BIGINT NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+        user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL,
+        UNIQUE(report_id, user_id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS route_history (
+        id BIGSERIAL PRIMARY KEY,
+        user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+        origin_label TEXT NOT NULL DEFAULT '',
+        destination_label TEXT NOT NULL DEFAULT '',
+        origin_lat DOUBLE PRECISION NOT NULL,
+        origin_lon DOUBLE PRECISION NOT NULL,
+        destination_lat DOUBLE PRECISION NOT NULL,
+        destination_lon DOUBLE PRECISION NOT NULL,
+        mode TEXT NOT NULL,
+        distance_m DOUBLE PRECISION NOT NULL,
+        duration_s DOUBLE PRECISION NOT NULL,
+        safety_score DOUBLE PRECISION NOT NULL,
+        created_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS route_feedback (
+        id BIGSERIAL PRIMARY KEY,
+        user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+        route_signature TEXT NOT NULL DEFAULT '',
+        rating TEXT NOT NULL CHECK(rating IN ('good','improve')),
+        mode TEXT NOT NULL DEFAULT 'safest',
+        profile TEXT NOT NULL DEFAULT 'walking',
+        progress DOUBLE PRECISION NOT NULL DEFAULT 0,
+        duration_s DOUBLE PRECISION NOT NULL DEFAULT 0,
+        distance_m DOUBLE PRECISION NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS geocode_cache (
+        cache_key TEXT PRIMARY KEY,
+        payload TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS audit_logs (
+        id BIGSERIAL PRIMARY KEY,
+        user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+        action TEXT NOT NULL,
+        metadata TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS risk_zones (
+        id BIGSERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        risk_type TEXT NOT NULL DEFAULT 'verified_incident_area',
+        latitude DOUBLE PRECISION NOT NULL,
+        longitude DOUBLE PRECISION NOT NULL,
+        radius_m DOUBLE PRECISION NOT NULL DEFAULT 350,
+        level_cap INTEGER NOT NULL DEFAULT 3 CHECK(level_cap BETWEEN 0 AND 5),
+        confidence DOUBLE PRECISION NOT NULL DEFAULT 0.75 CHECK(confidence BETWEEN 0 AND 1),
+        source TEXT NOT NULL DEFAULT 'admin',
+        source_url TEXT NOT NULL DEFAULT '',
+        start_hour INTEGER,
+        end_hour INTEGER,
+        active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS shared_routes (
+        id BIGSERIAL PRIMARY KEY,
+        token TEXT NOT NULL UNIQUE,
+        creator_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+        origin_label TEXT NOT NULL DEFAULT '',
+        destination_label TEXT NOT NULL DEFAULT '',
+        origin_lat DOUBLE PRECISION NOT NULL,
+        origin_lon DOUBLE PRECISION NOT NULL,
+        destination_lat DOUBLE PRECISION NOT NULL,
+        destination_lon DOUBLE PRECISION NOT NULL,
+        profile TEXT NOT NULL DEFAULT 'walking',
+        mode TEXT NOT NULL DEFAULT 'safest',
+        route_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        uses_count INTEGER NOT NULL DEFAULT 0
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS live_trips (
+        id BIGSERIAL PRIMARY KEY,
+        token TEXT NOT NULL UNIQUE,
+        creator_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        destination_label TEXT NOT NULL DEFAULT '',
+        last_lat DOUBLE PRECISION,
+        last_lon DOUBLE PRECISION,
+        last_accuracy DOUBLE PRECISION,
+        last_speed DOUBLE PRECISION,
+        last_heading DOUBLE PRECISION,
+        route_progress DOUBLE PRECISION NOT NULL DEFAULT 0,
+        safety_level INTEGER NOT NULL DEFAULT 3,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        active INTEGER NOT NULL DEFAULT 1
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS flow_samples (
+        id BIGSERIAL PRIMARY KEY,
+        cell_lat DOUBLE PRECISION NOT NULL,
+        cell_lon DOUBLE PRECISION NOT NULL,
+        direction_bucket INTEGER NOT NULL DEFAULT 0,
+        speed_kmh DOUBLE PRECISION NOT NULL,
+        source_hash TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS nearby_presence (
+        user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        cell_lat DOUBLE PRECISION NOT NULL,
+        cell_lon DOUBLE PRECISION NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS trusted_links (
+        id BIGSERIAL PRIMARY KEY,
+        owner_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        trusted_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        relation TEXT NOT NULL DEFAULT 'responsavel',
+        created_at TEXT NOT NULL,
+        UNIQUE(owner_user_id, trusted_user_id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS family_invites (
+        id BIGSERIAL PRIMARY KEY,
+        token TEXT NOT NULL UNIQUE,
+        inviter_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        relation TEXT NOT NULL DEFAULT 'responsavel',
+        created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        accepted_at TEXT,
+        accepted_by_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS app_notifications (
+        id BIGSERIAL PRIMARY KEY,
+        user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        source_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+        kind TEXT NOT NULL DEFAULT 'info',
+        title TEXT NOT NULL,
+        body TEXT NOT NULL DEFAULT '',
+        payload_json TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL,
+        read_at TEXT
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS mobile_auth_codes (
+        state_hash TEXT PRIMARY KEY,
+        exchange_hash TEXT UNIQUE,
+        code_challenge TEXT NOT NULL DEFAULT '',
+        user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        used_at TEXT
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS oauth_states (
+        state TEXT PRIMARY KEY,
+        redirect_uri TEXT NOT NULL,
+        next_url TEXT,
+        fingerprint TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL
+    )
+    """,
+]
+
+POSTGRES_INDEX_STATEMENTS = [
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL",
+    "CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id, expires_at)",
+    "CREATE INDEX IF NOT EXISTS idx_auth_sessions_expiry ON auth_sessions(expires_at, revoked_at)",
+    "CREATE INDEX IF NOT EXISTS idx_reports_status_created ON reports(status, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_reports_geo ON reports(latitude, longitude)",
+    "CREATE INDEX IF NOT EXISTS idx_routes_user_created ON route_history(user_id, created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_route_feedback_created ON route_feedback(created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_route_feedback_user ON route_feedback(user_id, created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_risk_zones_geo ON risk_zones(active, latitude, longitude)",
+    "CREATE INDEX IF NOT EXISTS idx_shared_routes_token ON shared_routes(token)",
+    "CREATE INDEX IF NOT EXISTS idx_shared_routes_expiry ON shared_routes(expires_at)",
+    "CREATE INDEX IF NOT EXISTS idx_live_trips_token ON live_trips(token)",
+    "CREATE INDEX IF NOT EXISTS idx_live_trips_expiry ON live_trips(expires_at, active)",
+    "CREATE INDEX IF NOT EXISTS idx_mobile_auth_expiry ON mobile_auth_codes(expires_at, used_at)",
+    "CREATE INDEX IF NOT EXISTS idx_oauth_states_expiry ON oauth_states(expires_at)",
+    "CREATE INDEX IF NOT EXISTS idx_flow_samples_geo_time ON flow_samples(cell_lat, cell_lon, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_flow_samples_time ON flow_samples(created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_nearby_presence_time ON nearby_presence(updated_at)",
+    "CREATE INDEX IF NOT EXISTS idx_trusted_links_owner ON trusted_links(owner_user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_trusted_links_trusted ON trusted_links(trusted_user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_family_invites_expiry ON family_invites(expires_at)",
+    "CREATE INDEX IF NOT EXISTS idx_app_notifications_user ON app_notifications(user_id, created_at DESC)",
+]
+
+POSTGRES_USER_MIGRATIONS = [
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub TEXT",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider TEXT NOT NULL DEFAULT 'password'",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS age INTEGER",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS sex TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_app_driver INTEGER",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS night_safety_mode INTEGER NOT NULL DEFAULT 1",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS route_preference TEXT NOT NULL DEFAULT 'balanced'",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_completed_at TEXT",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS distance_unit TEXT NOT NULL DEFAULT 'km'",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS vehicle_make TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS vehicle_model TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS vehicle_plate TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS vehicle_year TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_fuel_networks TEXT NOT NULL DEFAULT '[]'",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS home_label TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS work_label TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS presence_visible INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS presence_terms_accepted_at TEXT",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_name TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS emergency_phone TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS map_style TEXT NOT NULL DEFAULT 'spark'",
+    "ALTER TABLE oauth_states ADD COLUMN IF NOT EXISTS fingerprint TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE mobile_auth_codes ADD COLUMN IF NOT EXISTS code_challenge TEXT NOT NULL DEFAULT ''",
+]
+
+
+def connect_database(database_url: str | None, sqlite_path: str):
+    if is_postgres_url(database_url):
+        return PostgresConnection(database_url.strip())
+    conn = sqlite3.connect(sqlite_path)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
+    return conn
+
+
+def init_postgres_schema(conn) -> None:
+    for statement in POSTGRES_SCHEMA_STATEMENTS:
+        conn.execute(statement)
+    for statement in POSTGRES_USER_MIGRATIONS:
+        conn.execute(statement)
+    for statement in POSTGRES_INDEX_STATEMENTS:
+        conn.execute(statement)
+    conn.commit()
+
+
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import (
     Flask, render_template, request, redirect, url_for, session,
@@ -47,6 +453,7 @@ def load_local_env():
 
 load_local_env()
 
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 _configured_db = os.environ.get("WESAFE_DB", "").strip()
 _render_disk_dir = os.environ.get("RENDER_DISK_PATH", "/var/data").strip()
 if _configured_db:
@@ -56,7 +463,7 @@ elif _render_disk_dir and os.path.isdir(_render_disk_dir):
     DB_PATH = os.path.join(_render_disk_dir, "wesafe.db")
 else:
     DB_PATH = os.path.join(BASE_DIR, "wesafe.db")
-SECRET_KEY = os.environ.get("WESAFE_SECRET_KEY", "dev-change-this-wesafe-secret-key")
+SECRET_KEY = (os.environ.get("SECRET_KEY") or os.environ.get("WESAFE_SECRET_KEY") or "dev-change-this-wesafe-secret-key").strip()
 MAPBOX_ACCESS_TOKEN = os.environ.get("MAPBOX_ACCESS_TOKEN", "").strip()
 # X17 — environmental map styles. MAPBOX_STYLE remains as a backwards-compatible
 # fallback, but each mood can be configured independently in Render/.env.
@@ -96,6 +503,11 @@ GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", "").strip()
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+
+# Mobile app auth bridge. Google OAuth must happen in a real browser, not inside
+# Android WebView. The browser returns a short-lived one-time code to the APK.
+MOBILE_AUTH_RETURN_URI = os.environ.get("MOBILE_AUTH_RETURN_URI", "vaigo://auth/callback").strip()
+MOBILE_AUTH_TTL_SECONDS = max(120, min(900, int(os.environ.get("MOBILE_AUTH_TTL_SECONDS", "300") or 300)) )
 
 # V46 — designated owner account + explicit motorized profiles.
 ADMIN_EMAILS = {"miguelpinxs@gmail.com"} | {
@@ -249,10 +661,7 @@ def security_headers(response):
 
 def get_db():
     if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
-        g.db.execute("PRAGMA foreign_keys = ON")
-        g.db.execute("PRAGMA journal_mode = WAL")
+        g.db = connect_database(DATABASE_URL, DB_PATH)
     return g.db
 
 
@@ -288,6 +697,39 @@ def verify_password(stored, password):
 
 
 def init_db():
+    # Production: PostgreSQL. Local development keeps SQLite as a fallback.
+    if is_postgres_url(DATABASE_URL):
+        db = connect_database(DATABASE_URL, DB_PATH)
+        init_postgres_schema(db)
+
+        admin_email = os.environ.get("WESAFE_ADMIN_EMAIL", "admin@wesafe.local").strip().lower()
+        admin_password_env = os.environ.get("WESAFE_ADMIN_PASSWORD", "").strip()
+        admin_password = admin_password_env or "WeSafe@2026!"
+        existing = db.execute("SELECT id FROM users WHERE email = ?", (admin_email,)).fetchone()
+        if not existing:
+            db.execute(
+                "INSERT INTO users(name,email,password_hash,role,locale,created_at) VALUES(?,?,?,?,?,?)",
+                ("Administrador WeSafe", admin_email, hash_password(admin_password), "admin", "pt-BR", utcnow_iso()),
+            )
+        elif admin_password_env:
+            db.execute(
+                "UPDATE users SET password_hash=?, role='admin' WHERE id=?",
+                (hash_password(admin_password_env), existing["id"]),
+            )
+
+        owner_email = os.environ.get("SPARK_OWNER_EMAIL", "miguelpinxs@gmail.com").strip().lower()
+        owner = db.execute("SELECT id FROM users WHERE email=?", (owner_email,)).fetchone()
+        if owner:
+            db.execute("UPDATE users SET role='admin', is_active=1 WHERE id=?", (owner["id"],))
+        else:
+            db.execute(
+                "INSERT INTO users(name,email,password_hash,role,locale,created_at,auth_provider) VALUES(?,?,?,?,?,?,?)",
+                ("Miguel", owner_email, f"google_only${secrets.token_hex(32)}", "admin", "pt-BR", utcnow_iso(), "password"),
+            )
+        db.commit()
+        db.close()
+        return
+
     db = sqlite3.connect(DB_PATH)
     db.execute("PRAGMA foreign_keys = ON")
     db.executescript(
@@ -528,6 +970,19 @@ def init_db():
             FOREIGN KEY(source_user_id) REFERENCES users(id) ON DELETE SET NULL
         );
 
+        -- Browser-to-APK one-time handoff. No Google token is ever placed in a
+        -- deep link: only a short-lived exchange code is returned to the app.
+        CREATE TABLE IF NOT EXISTS mobile_auth_codes (
+            state_hash TEXT PRIMARY KEY,
+            exchange_hash TEXT UNIQUE,
+            code_challenge TEXT NOT NULL DEFAULT '',
+            user_id INTEGER,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            used_at TEXT,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
         -- OAuth state is persisted server-side because the app can run inside
         -- a third-party iframe. Partitioned browser cookies may not survive the
         -- top-level Google redirect on every mobile browser/WebView.
@@ -552,6 +1007,7 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_shared_routes_expiry ON shared_routes(expires_at);
         CREATE INDEX IF NOT EXISTS idx_live_trips_token ON live_trips(token);
         CREATE INDEX IF NOT EXISTS idx_live_trips_expiry ON live_trips(expires_at, active);
+        CREATE INDEX IF NOT EXISTS idx_mobile_auth_expiry ON mobile_auth_codes(expires_at, used_at);
         CREATE INDEX IF NOT EXISTS idx_oauth_states_expiry ON oauth_states(expires_at);
         CREATE INDEX IF NOT EXISTS idx_flow_samples_geo_time ON flow_samples(cell_lat, cell_lon, created_at);
         CREATE INDEX IF NOT EXISTS idx_flow_samples_time ON flow_samples(created_at);
@@ -614,6 +1070,10 @@ def init_db():
     oauth_columns = {row[1] for row in db.execute("PRAGMA table_info(oauth_states)").fetchall()}
     if "fingerprint" not in oauth_columns:
         db.execute("ALTER TABLE oauth_states ADD COLUMN fingerprint TEXT NOT NULL DEFAULT ''")
+
+    mobile_auth_columns = {row[1] for row in db.execute("PRAGMA table_info(mobile_auth_codes)").fetchall()}
+    if "code_challenge" not in mobile_auth_columns:
+        db.execute("ALTER TABLE mobile_auth_codes ADD COLUMN code_challenge TEXT NOT NULL DEFAULT ''")
 
     admin_email = os.environ.get("WESAFE_ADMIN_EMAIL", "admin@wesafe.local").strip().lower()
     admin_password_env = os.environ.get("WESAFE_ADMIN_PASSWORD", "").strip()
@@ -884,6 +1344,7 @@ def enforce_profile_onboarding():
     endpoint = request.endpoint or ""
     allowed = {
         "onboarding", "logout", "google_login", "google_callback", "login", "register",
+        "mobile_entry", "mobile_auth_google_start", "mobile_auth_finish", "mobile_auth_exchange",
         "healthz", "static", "frame_test", "embed",
     }
     if endpoint in allowed or endpoint.startswith("static"):
@@ -4261,7 +4722,7 @@ def healthz():
     """Render readiness check without calling third-party services.
 
     The previous health check returned 200 even while `/` crashed because a
-    critical helper was missing. This now validates SQLite, the home template
+    critical helper was missing. This now validates the configured database, the home template
     and provider configuration helpers so Render can reject a broken deploy.
     """
     try:
@@ -4407,20 +4868,23 @@ def register():
         db = get_db()
         try:
             cur = db.execute(
-                "INSERT INTO users(name,email,password_hash,role,locale,created_at) VALUES(?,?,?,?,?,?)",
+                "INSERT INTO users(name,email,password_hash,role,locale,created_at) VALUES(?,?,?,?,?,?) RETURNING id",
                 (name, email, hash_password(password), role_for_email(email), locale, utcnow_iso()),
             )
+            created = cur.fetchone()
+            new_user_id = int(created["id"] if hasattr(created, "keys") else created[0])
             db.commit()
-        except sqlite3.IntegrityError:
+        except DB_INTEGRITY_ERRORS:
+            db.rollback()
             flash("Já existe uma conta com este e-mail.", "danger")
             return render_template("register.html"), 409
 
         session.clear()
-        session["user_id"] = cur.lastrowid
+        session["user_id"] = new_user_id
         session["csrf_token"] = secrets.token_urlsafe(32)
         session.permanent = True
-        issue_persistent_login(cur.lastrowid)
-        audit("register", {}, cur.lastrowid)
+        issue_persistent_login(new_user_id)
+        audit("register", {}, new_user_id)
         flash("Conta criada. Agora personalize sua navegação.", "success")
         return redirect(url_for("onboarding", next=safe_next_url(request.args.get("next")) or url_for("map_page")))
 
@@ -4604,10 +5068,11 @@ def google_callback():
             user_id = user["id"]
         else:
             cur = db.execute(
-                "INSERT INTO users(name,email,password_hash,role,locale,created_at,last_login_at,google_sub,avatar_url,auth_provider) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO users(name,email,password_hash,role,locale,created_at,last_login_at,google_sub,avatar_url,auth_provider) VALUES(?,?,?,?,?,?,?,?,?,?) RETURNING id",
                 (name, email, f"google_only${secrets.token_hex(32)}", role_for_email(email), preferred_language(), utcnow_iso(), utcnow_iso(), sub, avatar, "google"),
             )
-            user_id = cur.lastrowid
+            created = cur.fetchone()
+            user_id = int(created["id"] if hasattr(created, "keys") else created[0])
             created_new = True
         db.commit()
     except Exception:
@@ -4627,6 +5092,156 @@ def google_callback():
     if created_new or onboarding_needed(refreshed):
         return redirect(url_for("onboarding", next=safe_next_url(next_url) or url_for("index")))
     return redirect(safe_next_url(next_url) or url_for("index"))
+
+
+# -----------------------------
+# Android WebView browser auth bridge
+# -----------------------------
+
+def _mobile_hash(value):
+    return hashlib.sha256(str(value or "").encode("utf-8", "ignore")).hexdigest()
+
+
+def _mobile_pkce_challenge(verifier):
+    digest = hashlib.sha256(str(verifier or "").encode("utf-8", "ignore")).digest()
+    import base64
+    return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
+
+
+def _mobile_return_uri_ok(value):
+    try:
+        expected = urlparse(MOBILE_AUTH_RETURN_URI)
+        candidate = urlparse(value or "")
+        return bool(
+            expected.scheme and expected.netloc
+            and candidate.scheme == expected.scheme
+            and candidate.netloc == expected.netloc
+            and candidate.path == expected.path
+            and not candidate.params and not candidate.query and not candidate.fragment
+        )
+    except Exception:
+        return False
+
+
+def _cleanup_mobile_auth_codes(db=None):
+    db = db or get_db()
+    now = utcnow_iso()
+    db.execute("DELETE FROM mobile_auth_codes WHERE expires_at<=? OR (used_at IS NOT NULL AND used_at<=?)", (now, now))
+    db.commit()
+
+
+@app.route("/mobile/entry")
+def mobile_entry():
+    """Stable APK entry: authenticated devices go home, others see login."""
+    if current_user():
+        return redirect(url_for("index"))
+    return redirect(url_for("login", app="1"))
+
+
+@app.route("/mobile/auth/google/start")
+def mobile_auth_google_start():
+    """Start Google in the system browser and preserve an APK return state."""
+    if not google_ready():
+        return "Google login is not configured.", 503
+    return_uri = (request.args.get("return_uri") or MOBILE_AUTH_RETURN_URI).strip()
+    state = (request.args.get("state") or "").strip()
+    challenge = (request.args.get("challenge") or "").strip()
+    if (
+        not _mobile_return_uri_ok(return_uri)
+        or len(state) < 32 or len(state) > 256
+        or not re.fullmatch(r"[A-Za-z0-9_-]{43,128}", challenge)
+    ):
+        abort(400)
+
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    expires = now + timedelta(seconds=MOBILE_AUTH_TTL_SECONDS)
+    db = get_db()
+    _cleanup_mobile_auth_codes(db)
+    db.execute(
+        "INSERT INTO mobile_auth_codes(state_hash,exchange_hash,code_challenge,user_id,created_at,expires_at,used_at) "
+        "VALUES(?,NULL,?,NULL,?,?,NULL) ON CONFLICT (state_hash) DO UPDATE SET "
+        "exchange_hash=NULL,code_challenge=EXCLUDED.code_challenge,user_id=NULL,created_at=EXCLUDED.created_at,expires_at=EXCLUDED.expires_at,used_at=NULL",
+        (_mobile_hash(state), challenge, now.isoformat(), expires.isoformat()),
+    )
+    db.commit()
+    finish_path = url_for("mobile_auth_finish", state=state)
+    return redirect(url_for("google_login", next=finish_path))
+
+
+@app.route("/mobile/auth/finish")
+@login_required
+def mobile_auth_finish():
+    """Browser landing after OAuth. Generates a one-use code and deep-links back."""
+    state = (request.args.get("state") or "").strip()
+    if len(state) < 32 or len(state) > 256:
+        abort(400)
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    db = get_db()
+    row = db.execute(
+        "SELECT state_hash,expires_at,used_at FROM mobile_auth_codes WHERE state_hash=? LIMIT 1",
+        (_mobile_hash(state),),
+    ).fetchone()
+    if not row or row["used_at"] or row["expires_at"] <= now.isoformat():
+        return render_template("mobile_auth_complete.html", success=False, deep_link=""), 400
+
+    raw_code = secrets.token_urlsafe(48)
+    db.execute(
+        "UPDATE mobile_auth_codes SET exchange_hash=?,user_id=? WHERE state_hash=? AND used_at IS NULL",
+        (_mobile_hash(raw_code), int(session["user_id"]), _mobile_hash(state)),
+    )
+    db.commit()
+    deep_link = f"{MOBILE_AUTH_RETURN_URI}?" + urlencode({"code": raw_code, "state": state})
+    audit("mobile_auth_code_issued", {"platform": "android"}, session["user_id"])
+    return render_template("mobile_auth_complete.html", success=True, deep_link=deep_link)
+
+
+@app.route("/mobile/auth/exchange", methods=["POST"])
+def mobile_auth_exchange():
+    """Exchange the deep-link code for the same persistent-login token used by the site."""
+    if not rate_limit("mobile_auth_exchange", 20, 60):
+        return jsonify({"ok": False, "error": "rate_limited"}), 429
+    payload = request.get_json(silent=True) or request.form
+    code = str(payload.get("code") or "").strip()
+    state = str(payload.get("state") or "").strip()
+    verifier = str(payload.get("verifier") or "").strip()
+    if len(code) < 32 or len(state) < 32 or len(verifier) < 43:
+        return jsonify({"ok": False, "error": "invalid_code"}), 400
+
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    db = get_db()
+    row = db.execute(
+        "SELECT user_id,exchange_hash,code_challenge,expires_at,used_at FROM mobile_auth_codes WHERE state_hash=? LIMIT 1",
+        (_mobile_hash(state),),
+    ).fetchone()
+    if (
+        not row or not row["user_id"] or not row["exchange_hash"] or row["used_at"]
+        or row["expires_at"] <= now.isoformat()
+        or not secrets.compare_digest(str(row["exchange_hash"]), _mobile_hash(code))
+        or not secrets.compare_digest(str(row["code_challenge"]), _mobile_pkce_challenge(verifier))
+    ):
+        audit("mobile_auth_exchange_failed", {"platform": "android"})
+        return jsonify({"ok": False, "error": "expired_or_invalid"}), 401
+
+    user = db.execute("SELECT id,is_active FROM users WHERE id=?", (int(row["user_id"]),)).fetchone()
+    if not user or not user["is_active"]:
+        return jsonify({"ok": False, "error": "account_inactive"}), 403
+
+    db.execute("UPDATE mobile_auth_codes SET used_at=? WHERE state_hash=?", (now.isoformat(), _mobile_hash(state)))
+    db.commit()
+
+    session.clear()
+    session["user_id"] = int(user["id"])
+    session["csrf_token"] = secrets.token_urlsafe(32)
+    session.permanent = True
+    remember_token = issue_persistent_login(int(user["id"]))
+    audit("mobile_auth_exchange_success", {"platform": "android"}, int(user["id"]))
+    return jsonify({
+        "ok": True,
+        "cookie_name": REMEMBER_COOKIE_NAME,
+        "remember_token": remember_token,
+        "max_age": REMEMBER_LOGIN_DAYS * 24 * 60 * 60,
+        "entry": url_for("mobile_entry"),
+    })
 
 
 @app.route("/onboarding", methods=["GET", "POST"])
@@ -4798,7 +5413,8 @@ def confirm_report(report_id):
         db.execute("UPDATE reports SET confirmations=confirmations+1 WHERE id=?", (report_id,))
         db.commit()
         flash("Alerta confirmado.", "success")
-    except sqlite3.IntegrityError:
+    except DB_INTEGRITY_ERRORS:
+        db.rollback()
         flash("Você já confirmou este alerta.", "info")
     return redirect(url_for("alerts_page"))
 
@@ -6429,7 +7045,7 @@ def server_error(_e):
 @app.cli.command("init-db")
 def init_db_command():
     init_db()
-    print(f"Banco inicializado em {DB_PATH}")
+    print("Banco PostgreSQL inicializado via DATABASE_URL" if is_postgres_url(DATABASE_URL) else f"Banco SQLite inicializado em {DB_PATH}")
 
 
 def _acquire_keepalive_leader():
