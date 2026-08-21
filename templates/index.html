@@ -589,7 +589,7 @@ html[data-vaigo-theme="black"] .immersive-choice{background:rgba(0,0,0,.50)}html
 @media(min-width:700px){.immersive-choice-card{width:min(520px,calc(100vw - 44px));padding:24px}.immersive-option{min-height:128px;padding:16px}.immersive-choice-head h3{font-size:23px}}
 </style>
 {% endblock %}
-{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v63.css') }}?v=63"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v64.css') }}?v=64"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v65.css') }}?v=65"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v68.css') }}?v=68">{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v63.css') }}?v=63"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v64.css') }}?v=64"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v65.css') }}?v=65"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v69.css') }}?v=69">{% endblock %}
 {% block content %}
 <div class="ws-app" id="wsApp">
   {% if current_user and current_user['role'] == 'admin' %}<div class="sim-badge" id="simBadge"><i></i>SIMULAÇÃO ADMIN</div>{% endif %}
@@ -1526,7 +1526,56 @@ function syncNavigationHudGeometry(){
   street.style.setProperty('left',`${Math.round(center)}px`,'important');street.style.setProperty('right','auto','important');street.style.setProperty('top','auto','important');street.style.setProperty('bottom',`${bottom}px`,'important');street.style.setProperty('transform','translateX(-50%)','important');
   const feedback=$('navFeedback');if(feedback?.classList.contains('show'))requestAnimationFrame(()=>{const sr=street.getBoundingClientRect();const fbBottom=Math.max(bottom+38,Math.round(wr.bottom-sr.top+7));feedback.style.setProperty('left',`${Math.round(center)}px`,'important');feedback.style.setProperty('right','auto','important');feedback.style.setProperty('top','auto','important');feedback.style.setProperty('bottom',`${fbBottom}px`,'important');feedback.style.setProperty('transform','translateX(-50%)','important')});
 }
-function bindPlanningSheetDrag(){const grab=$('planGrab');if(!grab)return;let active=false,startY=0,moved=false,startedCollapsed=true;const clearPreview=()=>planSheet.style.removeProperty('--planner-drag-y');const settle=collapse=>{planSheet.classList.remove('sheet-dragging');clearPreview();planSheet.classList.toggle('sheet-collapsed',collapse);requestAnimationFrame(syncFloatingLocate)};grab.addEventListener('pointerdown',e=>{if(planSheet.classList.contains('hidden'))return;active=true;moved=false;startY=e.clientY;startedCollapsed=planSheet.classList.contains('sheet-collapsed');planSheet.classList.add('sheet-dragging');planSheet.style.setProperty('--planner-drag-y','0px');grab.setPointerCapture?.(e.pointerId)});grab.addEventListener('pointermove',e=>{if(!active)return;const dy=e.clientY-startY;if(Math.abs(dy)>4)moved=true;const preview=Math.max(-12,Math.min(12,dy*.18));planSheet.style.setProperty('--planner-drag-y',`${preview}px`)});const end=e=>{if(!active)return;active=false;const dy=e.clientY-startY;if(!moved){planSheet.classList.remove('sheet-dragging');clearPreview();return}if(dy<=-20)settle(false);else if(dy>=20)settle(true);else settle(startedCollapsed)};grab.addEventListener('pointerup',end);grab.addEventListener('pointercancel',end);grab.addEventListener('click',()=>{if(moved){moved=false;return}settle(!planSheet.classList.contains('sheet-collapsed'))});grab.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();settle(!planSheet.classList.contains('sheet-collapsed'))}})}
+function bindPlanningSheetDrag(){
+  const grab=$('planGrab');if(!grab||!planSheet)return;
+  let active=false,startY=0,lastY=0,lastT=0,moved=false,startedCollapsed=true,suppressClick=false;
+  const clearPreview=()=>planSheet.style.removeProperty('--planner-drag-y');
+  const settle=collapse=>{
+    planSheet.classList.remove('sheet-dragging');
+    clearPreview();
+    planSheet.classList.toggle('sheet-collapsed',!!collapse);
+    grab.setAttribute('aria-expanded',String(!collapse));
+    requestAnimationFrame(()=>{syncFloatingLocate();syncSearchResultsPlacement()});
+  };
+  const range=()=>Math.max(80,Math.min(window.innerHeight*.58,planSheet.getBoundingClientRect().height-plannerCollapsedHeight()));
+  grab.addEventListener('pointerdown',e=>{
+    if(planSheet.classList.contains('hidden'))return;
+    active=true;moved=false;suppressClick=false;startY=lastY=e.clientY;lastT=performance.now();
+    startedCollapsed=planSheet.classList.contains('sheet-collapsed');
+    planSheet.classList.add('sheet-dragging');
+    planSheet.style.setProperty('--planner-drag-y','0px');
+    grab.setPointerCapture?.(e.pointerId);
+  });
+  grab.addEventListener('pointermove',e=>{
+    if(!active)return;
+    const dy=e.clientY-startY,limit=range();
+    if(Math.abs(dy)>3)moved=true;
+    let preview=dy;
+    if(startedCollapsed)preview=Math.max(-limit,Math.min(26,dy));
+    else preview=Math.max(-20,Math.min(limit,dy));
+    if((startedCollapsed&&preview>0)||(!startedCollapsed&&preview<0))preview*=.28;
+    planSheet.style.setProperty('--planner-drag-y',`${preview.toFixed(1)}px`);
+    const now=performance.now();if(now-lastT>24){lastY=e.clientY;lastT=now}
+    requestAnimationFrame(syncFloatingLocate);
+  });
+  const end=e=>{
+    if(!active)return;active=false;
+    const dy=e.clientY-startY,dt=Math.max(16,performance.now()-lastT),velocity=(e.clientY-lastY)/dt;
+    if(!moved){planSheet.classList.remove('sheet-dragging');clearPreview();return}
+    suppressClick=true;
+    const threshold=Math.max(34,Math.min(88,range()*.18));
+    let collapse=startedCollapsed;
+    if(dy<=-threshold||velocity<-.55)collapse=false;
+    else if(dy>=threshold||velocity>.55)collapse=true;
+    settle(collapse);
+    setTimeout(()=>{suppressClick=false},80);
+  };
+  grab.addEventListener('pointerup',end);
+  grab.addEventListener('pointercancel',e=>{if(active)end(e)});
+  grab.addEventListener('click',()=>{if(suppressClick)return;settle(!planSheet.classList.contains('sheet-collapsed'))});
+  grab.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();settle(!planSheet.classList.contains('sheet-collapsed'))}});
+  grab.setAttribute('aria-expanded',String(!planSheet.classList.contains('sheet-collapsed')));
+}
 bindPlanningSheetDrag();bindAccountDrawerDrag();if(window.ResizeObserver&&planSheet){new ResizeObserver(()=>requestAnimationFrame(()=>{syncFloatingLocate();syncSearchResultsPlacement()})).observe(planSheet)}if(window.ResizeObserver&&activeNav){new ResizeObserver(()=>requestAnimationFrame(syncNavigationHudGeometry)).observe(activeNav)}activeNav?.addEventListener('transitionend',()=>requestAnimationFrame(syncNavigationHudGeometry));planSheet?.addEventListener('scroll',()=>requestAnimationFrame(syncSearchResultsPlacement),{passive:true});requestAnimationFrame(syncFloatingLocate);window.addEventListener('resize',()=>{syncFloatingLocate();syncSearchResultsPlacement()},{passive:true});
 let vaigoViewportTimer=null;
 function refreshResponsiveViewport(){

@@ -1,0 +1,12 @@
+VAIGO V69 — validação de layout
+
+Validações executadas:
+- CSS parseado sem erros.
+- JavaScript da nova interação do bottom sheet validado com node --check.
+- Layout representativo validado em 340x800, 390x844 e 430x932.
+- Nenhum elemento estrutural fora da viewport nos testes com o template real/offline.
+- Navegação testada com instrução propositalmente longa.
+- Search/result cards preparados com min-width:0, ellipsis e overflow seguro.
+- Horizontal chips/rotas usam scroll intencional, sem aumentar a largura da página.
+
+Escopo do ZIP: SOMENTE mapa/interface. Nenhum backend.

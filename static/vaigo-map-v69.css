@@ -1,0 +1,373 @@
+/* ================================================================
+   VAIGO V69 — MAP ONLY / MOBILE POLISH
+   Scope: templates/index.html only. No backend/auth/database changes.
+   ================================================================ */
+
+:root{
+  --v69-purple:#5b5ce2;
+  --v69-purple-strong:#4d4fd6;
+  --v69-safe-top:max(8px, env(safe-area-inset-top));
+  --v69-safe-bottom:max(8px, env(safe-area-inset-bottom));
+  --v69-edge:8px;
+  --planner-collapsed-h:118px;
+}
+
+body[data-mood="day"], body:not([data-mood]){
+  --v69-panel:rgba(255,255,255,.94);
+  --v69-panel-solid:#fff;
+  --v69-panel-soft:rgba(247,249,252,.96);
+  --v69-text:#202636;
+  --v69-muted:#727d90;
+  --v69-faint:#9099a9;
+  --v69-line:rgba(28,35,49,.085);
+  --v69-line-strong:rgba(28,35,49,.13);
+  --v69-shadow:0 12px 32px rgba(28,38,55,.12);
+  --v69-shadow-lg:0 20px 54px rgba(28,38,55,.16);
+}
+body[data-mood="night"]{
+  --v69-panel:rgba(15,18,24,.94);
+  --v69-panel-solid:#12161d;
+  --v69-panel-soft:rgba(20,24,31,.96);
+  --v69-text:#f4f6f9;
+  --v69-muted:#a2aab7;
+  --v69-faint:#7d8694;
+  --v69-line:rgba(255,255,255,.085);
+  --v69-line-strong:rgba(255,255,255,.14);
+  --v69-shadow:0 12px 32px rgba(0,0,0,.25);
+  --v69-shadow-lg:0 20px 56px rgba(0,0,0,.35);
+}
+
+/* Global overflow protection for every map card. */
+.ws-app *, .ws-app *::before, .ws-app *::after{box-sizing:border-box}
+.ws-app button,.ws-app input,.ws-app select{max-width:100%}
+.ws-app .result-copy,.ws-app .nav-maneuver-copy,.ws-app .nav-alt-copy,
+.ws-app .nav-feedback-copy,.ws-app .start-trip-copy,.ws-app .welcome,
+.ws-app .parking-head>div,.ws-app .route-head>div,.ws-app .support-item>span,
+.ws-app .pref-row>div,.ws-app .safety-tool>span{min-width:0}
+
+@media (max-width:899px){
+  html,body{width:100%;height:100%;height:100dvh;overflow:hidden}
+  .ws-app{width:100%;max-width:none!important;height:100dvh!important;min-height:100svh;margin:0!important}
+
+  /* Header — fixed safe margins, no collision with notches. */
+  .header{
+    left:var(--v69-edge)!important;
+    right:var(--v69-edge)!important;
+    top:var(--v69-safe-top)!important;
+    gap:6px!important;
+  }
+  .brand{
+    min-width:0;
+    height:44px!important;
+    padding:0 10px 0 7px!important;
+    border-radius:16px!important;
+  }
+  .brand-logo{width:30px!important;height:30px!important;flex:0 0 30px;border-radius:11px!important}
+  .brand-copy{min-width:0}
+  .brand-copy b{font-size:12.5px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .brand-copy span{font-size:8px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .header-actions{flex:0 0 auto;gap:5px!important}
+  .icon-btn{width:44px!important;height:44px!important;border-radius:15px!important;flex:0 0 44px}
+
+  /* Search — always inside screen, with enough room for touch. */
+  .search-card{
+    left:var(--v69-edge)!important;
+    right:var(--v69-edge)!important;
+    top:max(58px,calc(env(safe-area-inset-top) + 50px))!important;
+    width:auto!important;
+    padding:5px!important;
+    border-radius:20px!important;
+  }
+  .search-card .location-row{
+    min-height:52px!important;
+    height:auto!important;
+    grid-template-columns:27px minmax(0,1fr) 38px!important;
+    gap:3px!important;
+    padding:0 2px!important;
+    border-radius:15px!important;
+  }
+  .search-card .location-input{
+    min-width:0!important;
+    width:100%!important;
+    height:50px!important;
+    padding:0 4px!important;
+    font-size:13.5px!important;
+    line-height:1.2!important;
+    text-overflow:ellipsis;
+  }
+  .search-card .row-btn{width:36px!important;height:36px!important;border-radius:11px!important}
+  .search-shortcuts{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+  .search-shortcuts::-webkit-scrollbar{display:none}
+  .chip-shortcut,.chip-weather{flex:0 0 auto;max-width:160px}
+  .chip-shortcut span,.chip-weather span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* Search results — text can never eat icons/meta or leave viewport. */
+  .search-results,.search-results.search-results-portal{
+    max-width:calc(100% - (var(--v69-edge) * 2))!important;
+    border-radius:18px!important;
+    padding:5px!important;
+    overscroll-behavior:contain;
+    scrollbar-width:none;
+  }
+  .search-results::-webkit-scrollbar{display:none}
+  .search-item{
+    width:100%!important;
+    max-width:100%!important;
+    grid-template-columns:36px minmax(0,1fr) auto!important;
+    gap:8px!important;
+    min-height:58px!important;
+    padding:8px!important;
+    border-radius:14px!important;
+    overflow:hidden;
+  }
+  .search-item.rich.has-photo{grid-template-columns:52px minmax(0,1fr) auto!important}
+  .search-item.rich.no-photo{grid-template-columns:minmax(0,1fr) auto!important}
+  .place-thumb{width:52px!important;height:52px!important;border-radius:12px!important}
+  .result-copy b,.result-address,.result-copy small{
+    display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .result-copy b{font-size:11.5px!important;line-height:1.25!important}
+  .result-address{font-size:8px!important;line-height:1.3!important}
+  .result-meta{max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* Floating map controls — geometry follows header/search and sheet. */
+  .status-chip{
+    left:var(--v69-edge)!important;
+    top:max(166px,calc(env(safe-area-inset-top) + 158px))!important;
+    max-width:min(60%,220px)!important;
+    height:32px!important;
+    padding:0 10px!important;
+  }
+  .status-chip span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .map-tools{
+    right:var(--v69-edge)!important;
+    top:max(166px,calc(env(safe-area-inset-top) + 158px))!important;
+    gap:6px!important;
+  }
+  .map-btn{width:43px!important;height:43px!important;border-radius:14px!important}
+  .gps-quality{
+    right:58px!important;
+    top:max(171px,calc(env(safe-area-inset-top) + 163px))!important;
+    max-width:130px;
+  }
+  .floating-locate{
+    left:var(--v69-edge)!important;
+    width:48px!important;height:48px!important;border-radius:16px!important;
+    transition:bottom .34s cubic-bezier(.22,.82,.24,1),transform .16s ease,opacity .2s ease!important;
+  }
+
+  /* Bottom planner sheet — smooth, predictable, safe-area aware. */
+  .sheet{
+    left:6px!important;
+    right:6px!important;
+    width:auto!important;
+    bottom:max(6px,env(safe-area-inset-bottom))!important;
+    max-height:calc(100dvh - max(64px,calc(env(safe-area-inset-top) + 56px)))!important;
+    padding:7px 10px max(10px,env(safe-area-inset-bottom))!important;
+    border-radius:28px!important;
+    overflow:hidden!important;
+    transform:translateY(var(--planner-drag-y,0px));
+    transition:transform .38s cubic-bezier(.22,.82,.24,1),opacity .24s ease,box-shadow .28s ease!important;
+    will-change:transform;
+    contain:layout paint;
+  }
+  .sheet.sheet-dragging{transition:none!important;user-select:none;-webkit-user-select:none}
+  .sheet.sheet-collapsed{
+    transform:translateY(calc(100% - var(--planner-collapsed-h) + var(--planner-drag-y,0px)))!important;
+  }
+  .sheet.hidden{transform:translateY(calc(100% + 28px))!important}
+  .sheet #routeState{
+    max-height:calc(100dvh - max(175px,calc(env(safe-area-inset-top) + 165px)))!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    scrollbar-width:none;
+    padding-bottom:2px;
+  }
+  .sheet #routeState::-webkit-scrollbar{display:none}
+  .sheet.sheet-collapsed #routeState{pointer-events:none;overflow:hidden!important}
+  .sheet.sheet-collapsed .welcome p{opacity:.72}
+
+  .grab{
+    width:46px!important;height:5px!important;
+    padding:9px 0!important;
+    margin:-5px auto 4px!important;
+    border-radius:999px!important;
+    background-clip:content-box!important;
+    transition:width .22s ease,background .22s ease!important;
+  }
+  .sheet.sheet-dragging .grab{width:58px!important}
+
+  /* Welcome/actions — no clipped content. */
+  .welcome{padding:0 1px 2px!important}
+  .welcome-top{gap:9px!important;align-items:center!important}
+  .welcome h1{font-size:17px!important;line-height:1.18!important;overflow-wrap:anywhere}
+  .welcome p{font-size:9.5px!important;line-height:1.42!important;margin-top:4px!important}
+  .safety-orb{flex:0 0 44px!important;width:44px!important;height:44px!important;border-radius:15px!important}
+  .quick-grid{gap:6px!important;margin-top:9px!important;overflow-x:auto!important;scrollbar-width:none}
+  .quick-grid::-webkit-scrollbar{display:none}
+  .quick{flex:0 0 auto;min-width:max-content;max-width:170px;min-height:42px!important;padding:7px 10px!important;border-radius:14px!important}
+  .quick b{font-size:9px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .quick span{font-size:7px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* Route chooser/cards — every grid item is allowed to shrink. */
+  .travel,.segment{width:100%;min-width:0}
+  .travel button,.segment button{min-width:0;min-height:40px;line-height:1.15}
+  .travel button{white-space:nowrap}
+  .route-variants{gap:6px!important;max-width:100%;overflow-x:auto!important;scrollbar-width:none}
+  .route-variants::-webkit-scrollbar{display:none}
+  .route-variant{flex:0 0 auto;min-width:94px!important;max-width:124px!important;padding:8px!important}
+  .route-variant b,.route-variant span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .route-card,.parking-nearby,.route-insight,.safety-strip{max-width:100%;overflow:hidden}
+  .route-head{gap:8px!important;min-width:0}
+  .route-head h2,.route-head b,.route-head strong{overflow-wrap:anywhere}
+  .route-time{flex:0 0 auto;white-space:nowrap}
+  .route-meta,.route-ai,.risk-note,.disclaimer{overflow-wrap:anywhere;word-break:normal}
+  .route-ai{max-width:100%}
+
+  .parking-head{gap:8px!important;min-width:0}
+  .parking-head b,.parking-head small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #parkingSource{flex:0 0 auto;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .parking-item{min-width:0;overflow:hidden}
+  .parking-item b,.parking-item span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .route-insight{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:5px!important}
+  .insight{min-width:0;padding:7px 4px!important}
+  .insight strong{font-size:10px!important;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .insight span{font-size:6px!important;line-height:1.25!important;overflow-wrap:anywhere}
+
+  .start-trip-cta{
+    width:100%!important;min-width:0!important;
+    grid-template-columns:36px minmax(0,1fr) 24px!important;
+    gap:8px!important;
+    min-height:55px!important;
+    border-radius:17px!important;
+  }
+  .start-trip-copy b{font-size:11.5px!important;line-height:1.2!important}
+  .start-trip-copy small{font-size:7px!important;line-height:1.25!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+  .start-trip-arrow{font-size:24px!important}
+
+  .sub-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:5px!important}
+  .sub-action{min-width:0!important;min-height:42px!important;padding:6px 4px!important;font-size:8px!important;line-height:1.15!important;border-radius:13px!important}
+  .sub-action svg{flex:0 0 auto}
+
+  /* Active navigation: maneuver can wrap to two lines instead of disappearing. */
+  .body-nav .nav-maneuver-top{
+    left:8px!important;right:8px!important;
+    top:var(--v69-safe-top)!important;
+    min-height:70px!important;height:auto!important;
+    padding:9px 10px!important;
+    border-radius:21px!important;
+    gap:9px!important;
+  }
+  .nav-maneuver-icon{width:48px!important;height:48px!important;flex:0 0 48px!important;border-radius:16px!important}
+  .nav-maneuver-copy b{
+    font-size:15px!important;line-height:1.15!important;
+    white-space:normal!important;
+    overflow:hidden!important;
+    display:-webkit-box!important;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+  }
+  .nav-maneuver-copy span{font-size:9px!important;line-height:1.25!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .nav-panel.nav-minimal{
+    left:6px!important;right:6px!important;
+    bottom:max(6px,env(safe-area-inset-bottom))!important;
+    width:auto!important;
+    padding:7px!important;
+    border-radius:23px!important;
+    overflow:hidden!important;
+  }
+  .nav-summary-row{grid-template-columns:repeat(3,minmax(0,1fr)) 46px!important;gap:5px!important}
+  .nav-summary-item{min-width:0!important;height:50px!important;padding:0 7px!important;border-radius:13px!important}
+  .nav-summary-item small{font-size:6px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nav-summary-item strong{font-size:10.5px!important;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nav-search-btn{width:46px!important;height:50px!important;border-radius:13px!important}
+
+  .body-nav .nav-street-chip{
+    min-width:0!important;
+    width:min(62vw,265px)!important;
+    max-width:calc(100vw - 142px)!important;
+    height:auto!important;min-height:38px!important;
+    padding:7px 10px!important;
+    border-radius:13px!important;
+  }
+  .nav-street-chip span{font-size:10px!important;line-height:1.2!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .nav-alt-hint,.nav-feedback{
+    left:8px!important;right:8px!important;width:auto!important;max-width:none!important;
+    overflow:hidden!important;
+  }
+  .nav-alt-copy b,.nav-feedback-copy b{white-space:normal!important;overflow-wrap:anywhere;line-height:1.22!important}
+  .nav-alt-copy em{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nav-feedback-actions{flex:0 0 auto}
+
+  .nav-control-stack{right:8px!important;gap:6px!important}
+  .nav-stack-btn{width:43px!important;height:43px!important;border-radius:14px!important}
+  .floating-speedo{right:8px!important}
+
+  /* Drawers/modals — never touch screen edges. */
+  .safety-drawer,.prefs-drawer{
+    left:8px!important;right:8px!important;width:auto!important;
+    max-width:calc(100% - 16px)!important;
+    max-height:min(60dvh,470px)!important;
+    overscroll-behavior:contain;
+  }
+  .safety-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .safety-tool{min-width:0!important}
+  .safety-tool b,.safety-tool span,.pref-row b,.pref-row span{overflow-wrap:anywhere}
+
+  /* Popup cards stay readable on narrow phones. */
+  .mapboxgl-popup{max-width:calc(100vw - 24px)!important}
+  .mapboxgl-popup-content{max-width:calc(100vw - 24px)!important}
+  .place-popup,.place-popup.no-image{width:min(214px,calc(100vw - 50px))!important;max-width:min(214px,calc(100vw - 50px))!important}
+  .place-popup h4,.place-popup p,.place-popup-meta{overflow-wrap:anywhere}
+
+  /* Motion: fluid but short enough to feel immediate. */
+  .sheet,.search-results,.prefs-drawer,.safety-drawer,.nav-panel,.nav-maneuver-top,
+  .nav-alt-hint,.nav-feedback,.destination-confirm-card,.account-drawer{
+    animation-duration:.28s!important;
+    animation-timing-function:cubic-bezier(.22,.82,.24,1)!important;
+  }
+}
+
+@media(max-width:390px){
+  :root{--v69-edge:7px;--planner-collapsed-h:112px}
+  .search-card .location-input{font-size:13px!important}
+  .status-chip{max-width:55%!important}
+  .route-variant{min-width:88px!important}
+  .sub-action{font-size:7.5px!important}
+  .nav-summary-item{padding:0 5px!important}
+  .nav-summary-item strong{font-size:10px!important}
+}
+
+@media(max-width:350px){
+  :root{--v69-edge:6px;--planner-collapsed-h:106px}
+  .brand-copy span{display:none!important}
+  .brand{max-width:190px}
+  .search-card .location-row{grid-template-columns:24px minmax(0,1fr) 35px!important}
+  .search-card .location-input{font-size:12px!important}
+  .result-meta{display:none!important}
+  .search-item{grid-template-columns:34px minmax(0,1fr)!important}
+  .search-item.rich.has-photo{grid-template-columns:48px minmax(0,1fr)!important}
+  .sub-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .sub-actions #previewRouteBtn{grid-column:1/-1}
+  .nav-summary-row{grid-template-columns:repeat(3,minmax(0,1fr)) 42px!important}
+  .nav-search-btn{width:42px!important}
+}
+
+/* Respect reduced-motion accessibility without making controls jump. */
+@media(prefers-reduced-motion:reduce){
+  .sheet,.floating-locate,.search-results,.prefs-drawer,.safety-drawer,.nav-panel,
+  .nav-maneuver-top,.nav-alt-hint,.nav-feedback{transition-duration:.01ms!important;animation-duration:.01ms!important}
+}
+
+/* Final text-flow hardening for horizontal route/recent chips. */
+@media(max-width:899px){
+  .route-variant b,.route-variant span,.quick b,.quick span{display:block!important;min-width:0!important}
+  .route-variant b{margin:0 0 2px!important;line-height:1.15!important}
+  .route-variant span{line-height:1.2!important}
+  .route-variants,.quick-grid,.search-shortcuts{-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+  .route-variant,.quick,.chip-shortcut,.chip-weather{scroll-snap-align:start}
+}
