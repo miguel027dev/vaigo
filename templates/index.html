@@ -589,7 +589,7 @@ html[data-vaigo-theme="black"] .immersive-choice{background:rgba(0,0,0,.50)}html
 @media(min-width:700px){.immersive-choice-card{width:min(520px,calc(100vw - 44px));padding:24px}.immersive-option{min-height:128px;padding:16px}.immersive-choice-head h3{font-size:23px}}
 </style>
 {% endblock %}
-{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v63.css') }}?v=63"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v64.css') }}?v=64"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v65.css') }}?v=65"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v69.css') }}?v=69">{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v63.css') }}?v=63"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v64.css') }}?v=64"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v65.css') }}?v=65"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v69.css') }}?v=69"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v70.css') }}?v=70">{% endblock %}
 {% block content %}
 <div class="ws-app" id="wsApp">
   {% if current_user and current_user['role'] == 'admin' %}<div class="sim-badge" id="simBadge"><i></i>SIMULAÇÃO ADMIN</div>{% endif %}
@@ -632,7 +632,7 @@ html[data-vaigo-theme="black"] .immersive-choice{background:rgba(0,0,0,.50)}html
     <button type="button" class="nav-stack-btn" id="navImmersiveToggle" aria-label="Alternar modo imersivo" title="Modo imersivo"><i data-lucide="scan" width="18"></i></button>
   </div>
   <div class="nav-immersive-chip" id="navImmersiveChip"><i data-lucide="scan" width="13"></i><span>Modo imersivo</span></div>
-  <div class="nav-map-mode" id="navMapMode" aria-live="polite"><i data-lucide="move" width="14"></i><span><b>Mapa livre</b><small>Arraste, aproxime ou gire. Use recalibrar para voltar ao trajeto.</small></span></div>
+  
   <button type="button" class="nav-audio-toggle active" id="soundBtn" aria-label="Desativar orientações por voz" title="Áudio ligado"><i data-lucide="volume-2" width="19"></i></button>
   <div class="nav-voice-popover" id="navVoicePopover"><small>VOZ DAS INSTRUÇÕES</small><select id="navVoiceSelect" aria-label="Selecionar voz"><option value="">Automática</option></select><button type="button" id="voicePreviewBtn">Ouvir exemplo</button></div>
   <div class="map-tools" aria-label="Controles rápidos do mapa">
@@ -677,26 +677,26 @@ html[data-vaigo-theme="black"] .immersive-choice{background:rgba(0,0,0,.50)}html
     <div class="grab planner-grab" id="planGrab" role="button" tabindex="0" aria-label="Puxar painel para cima ou para baixo"></div>
     <div class="welcome planner-welcome" id="welcomeState">
       <div class="planner-heading">
-        <div class="planner-heading-copy"><small>IR PARA</small><b>Para onde vamos?</b></div>
+        <div class="planner-heading-copy"><small>DESTINO</small><b>Para onde vamos?</b></div>
         <div class="chip-weather planner-weather" id="weatherPill" aria-live="polite"><i data-lucide="cloud-sun" width="15"></i><span id="weatherPillValue">--°</span></div>
       </div>
 
       <div class="planner-presets" aria-label="Destinos rápidos">
-        <button type="button" class="planner-preset" id="quickRecent"><span class="planner-preset-icon"><i data-lucide="history" width="16"></i></span><span><b>Recentes</b><small>Últimos destinos</small></span></button>
+        <button type="button" class="planner-preset" id="quickRecent"><span class="planner-preset-icon"><i data-lucide="history" width="16"></i></span><span><b>Recentes</b><small>Seus últimos destinos</small></span></button>
         <button type="button" class="planner-preset" id="quickHome"><span class="planner-preset-icon"><i data-lucide="house" width="16"></i></span><span><b>Casa</b><small>{% if current_user and current_user['home_label'] %}{{ current_user['home_label'] }}{% else %}Definir endereço{% endif %}</small></span></button>
         <button type="button" class="planner-preset" id="quickWork"><span class="planner-preset-icon"><i data-lucide="briefcase-business" width="16"></i></span><span><b>Trabalho</b><small>{% if current_user and current_user['work_label'] %}{{ current_user['work_label'] }}{% else %}Definir endereço{% endif %}</small></span></button>
       </div>
 
       <div class="planner-search-row">
-        <div class="search-card planner-search-card" aria-label="Buscar destino">
+        <div class="search-card planner-search-card" aria-label="Buscar destino, endereço ou lugar">
           <div class="origin-hidden"><input id="originInput" class="location-input" autocomplete="off"><button type="button" id="locateBtn"></button><button type="button" id="swapBtn"></button></div>
-          <div class="location-row planner-location-row"><span class="planner-search-icon"><i data-lucide="search" width="18"></i></span><input id="destinationInput" class="location-input" placeholder="Para onde vamos?" autocomplete="off" enterkeyhint="search"><button type="button" id="quickRecentTop" class="row-btn" aria-label="Abrir destinos recentes"><i data-lucide="history" width="17"></i></button></div>
+          <div class="location-row planner-location-row"><span class="planner-search-icon"><i data-lucide="search" width="18"></i></span><input id="destinationInput" class="location-input" placeholder="Digite um destino, endereço ou lugar" autocomplete="off" enterkeyhint="search"><button type="button" id="quickRecentTop" class="row-btn" aria-label="Abrir recentes"><i data-lucide="history" width="17"></i></button></div>
           <div class="search-results" id="searchResults"></div>
         </div>
-        <button type="button" class="planner-adjust-btn" id="prefsBtn" aria-label="Ajustes de mapa e rota" title="Ajustes"><i data-lucide="sliders-horizontal" width="19"></i><span>Ajustes</span></button>
+        <button type="button" class="planner-adjust-btn" id="prefsBtn" aria-label="Ajustes de mapa e rota" title="Ajustes"><i data-lucide="sliders-horizontal" width="19"></i><span>Mapa</span></button>
       </div>
 
-      <button type="button" class="planner-expand-hint" id="plannerExpandToggle" aria-expanded="false"><i data-lucide="chevrons-up" width="14"></i><span>Explorar perto de você</span></button>
+      <button type="button" class="planner-expand-hint" id="plannerExpandToggle" aria-expanded="false"><i data-lucide="chevrons-up" width="14"></i><span>Explorar opções por perto</span></button>
       <div class="planner-expanded" id="plannerExpanded">
         <div class="planner-section-head"><div><small>PERTO DE VOCÊ</small><b>O que você precisa agora?</b></div><span>Toque para buscar no mapa</span></div>
         <div class="nearby-services" aria-label="Serviços próximos">
