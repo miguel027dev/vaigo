@@ -1044,6 +1044,10 @@ CATEGORY_META = {
     "harassment": {"label": "Assédio/importunação", "weight": 1.30, "quiet": 0.10, "icon": "user-alert"},
     "poor_lighting": {"label": "Iluminação ruim", "weight": 1.05, "quiet": 0.05, "icon": "moon"},
     "accident": {"label": "Acidente/risco viário", "weight": 1.15, "quiet": 0.20, "icon": "triangle-alert"},
+    "traffic": {"label": "Trânsito parado", "weight": 0.72, "quiet": 0.45, "icon": "traffic-cone"},
+    "road_block": {"label": "Via bloqueada", "weight": 1.05, "quiet": 0.20, "icon": "ban"},
+    "blitz": {"label": "Blitz/Fiscalização", "weight": 0.38, "quiet": 0.80, "icon": "badge-alert"},
+    "road_hazard": {"label": "Perigo na via", "weight": 0.95, "quiet": 0.25, "icon": "diamond-alert"},
     "flood": {"label": "Alagamento", "weight": 1.25, "quiet": 0.10, "icon": "waves"},
     "construction": {"label": "Obra/bloqueio", "weight": 0.90, "quiet": 0.30, "icon": "construction"},
     "crowd": {"label": "Aglomeração/evento", "weight": 0.45, "quiet": 1.40, "icon": "users"},
@@ -1333,7 +1337,6 @@ def route_risk_metrics(route, reports, risk_zones=None, local_hour=None, travel_
 
     if data_confidence < 42:
         level_cap = min(level_cap, 3)
-        risk_factors.append("Cobertura de dados limitada: nível mantido de forma conservadora")
     elif data_confidence < 58:
         level_cap = min(level_cap, 4)
 
@@ -5289,6 +5292,71 @@ def api_reverse():
         return jsonify({"label": mapbox_reverse_geocode(lon, lat), "provider": "mapbox"})
     except Exception as exc:
         return jsonify({"label": f"{lat:.5f}, {lon:.5f}", "warning": str(exc)})
+
+
+@app.route("/api/alerts/quick", methods=["POST"])
+def api_alert_quick():
+    """Create a compact map alert and always return JSON to the map client."""
+    user = current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "Entre na sua conta para enviar um alerta."}), 401
+    if not validate_csrf():
+        return jsonify({"ok": False, "error": "Sessão expirada. Atualize a página e tente novamente."}), 400
+    if not rate_limit("quick-alert", 8, 300):
+        return jsonify({"ok": False, "error": "Muitos alertas em pouco tempo. Aguarde alguns minutos."}), 429
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"ok": False, "error": "Dados do alerta inválidos."}), 400
+
+    category = str(data.get("category") or "other").strip()
+    if category not in CATEGORY_META:
+        category = "other"
+    try:
+        lat = float(data.get("lat"))
+        lon = float(data.get("lon"))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "Localização inválida."}), 400
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        return jsonify({"ok": False, "error": "Localização inválida."}), 400
+
+    severity_by_category = {
+        "accident": 4, "traffic": 3, "road_block": 4, "blitz": 2,
+        "road_hazard": 3, "flood": 4, "construction": 3, "other": 3,
+    }
+    ttl_hours = {"traffic": 3, "blitz": 4, "road_block": 8, "accident": 10, "flood": 12, "road_hazard": 8}
+    severity = severity_by_category.get(category, 3)
+    label = CATEGORY_META.get(category, CATEGORY_META["other"])["label"]
+    now = datetime.now(timezone.utc)
+    created_at = now.replace(microsecond=0).isoformat()
+    expires_at = (now + timedelta(hours=ttl_hours.get(category, 8))).replace(microsecond=0).isoformat()
+    db = get_db()
+
+    # Same user + same category + almost same point in the last 90 seconds = reuse it.
+    cutoff = (now - timedelta(seconds=90)).replace(microsecond=0).isoformat()
+    recent = db.execute(
+        """SELECT id,latitude,longitude FROM reports
+           WHERE user_id=? AND category=? AND status='active' AND created_at>=?
+           ORDER BY created_at DESC LIMIT 8""",
+        (user["id"], category, cutoff),
+    ).fetchall()
+    for row in recent:
+        if haversine_m(lat, lon, float(row["latitude"]), float(row["longitude"])) <= 120:
+            return jsonify({"ok": True, "duplicate": True, "id": row["id"], "category": category, "category_label": label})
+
+    cur = db.execute(
+        """INSERT INTO reports(user_id,category,title,description,severity,latitude,longitude,address,status,created_at,expires_at)
+           VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+        (user["id"], category, label, "", severity, lat, lon, "", "active", created_at, expires_at),
+    )
+    db.commit()
+    report_id = cur.lastrowid
+    audit("quick_alert_created", {"report_id": report_id, "category": category, "severity": severity})
+    return jsonify({
+        "ok": True, "duplicate": False, "id": report_id, "category": category,
+        "category_label": label, "severity": severity, "lat": lat, "lon": lon,
+        "created_at": created_at, "expires_at": expires_at,
+    }), 201
 
 
 @app.route("/api/alerts")

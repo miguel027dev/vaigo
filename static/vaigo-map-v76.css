@@ -159,3 +159,8 @@ html[data-vaigo-theme] body.body-nav .ws-app #activeNav.nav-panel.nav-minimal{
 }
 html[data-vaigo-theme] body.body-nav .ws-app #activeNav.nav-panel.nav-minimal.show{transform:none!important;opacity:1!important;pointer-events:auto!important}
 @media (min-width:768px){html[data-vaigo-theme] body.body-nav .ws-app #activeNav.nav-panel.nav-minimal{bottom:30px!important}}
+
+
+/* VAIGO V76.1 — requested cleanup */
+.segment{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.start-trip-copy small{color:#fff!important;opacity:1!important}
