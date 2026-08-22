@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import re
+from urllib.parse import quote_plus, urlparse
 
 try:
     import psycopg2
@@ -32,23 +33,54 @@ _LIMIT_MINUS_ONE_RE = re.compile(r"\bLIMIT\s+-1\s+OFFSET\s+(\d+)\b", re.IGNORECA
 _INSERT_TABLE_RE = re.compile(r"^\s*INSERT\s+INTO\s+([a-zA-Z_][a-zA-Z0-9_]*)\b", re.IGNORECASE)
 
 
-def database_url() -> str:
-    url = os.environ.get("DATABASE_URL", "").strip()
+def _valid_database_url(url: str) -> str:
+    url = (url or "").strip()
     if not url:
-        raise RuntimeError(
-            "DATABASE_URL não configurada. O VAIGO usa PostgreSQL; configure a URL do banco no ambiente."
-        )
-    # Some providers still emit the legacy postgres:// prefix.
+        return ""
     if url.startswith("postgres://"):
-        url = "postgresql://" + url[len("postgres://"):]
-    lowered = url.lower()
-    obvious_placeholders = ("@host/", "@hostname/", "@host_real/", ":senha@", "/nome_real_do_banco")
-    if any(marker in lowered for marker in obvious_placeholders):
+        url = "postgresql://" + url[len("postgres://"): ]
+    if not url.startswith(("postgresql://", "postgresql+psycopg2://")):
+        raise RuntimeError("DATABASE_URL precisa ser uma URL PostgreSQL válida.")
+
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").strip().lower()
+    database = (parsed.path or "").lstrip("/").strip().lower()
+    user = (parsed.username or "").strip().lower()
+    password = (parsed.password or "").strip().lower()
+    bad_hosts = {"host", "hostname", "host_real", "host_gerado", "hostvaigo"}
+    bad_db = {"banco", "database", "nome_real_do_banco", "vaigodb_exemplo"}
+    bad_values = {"senha", "senha_real", "password", "usuario", "usuario_real", "user"}
+    if not host or host in bad_hosts or database in bad_db or user in bad_values or password in bad_values:
         raise RuntimeError(
-            "DATABASE_URL contém placeholder (host/hostname/senha/banco). "
-            "No Render use a connection string real ou o render.yaml deste pacote, que injeta a URL automaticamente."
+            "DATABASE_URL contém placeholder. No Render, apague valores como HOST_GERADO/hostname/host "
+            "e use a Internal Database URL real do PostgreSQL ou sincronize o render.yaml via Blueprint."
         )
     return url
+
+
+def database_url() -> str:
+    # 1) URL completa (Render/Neon/Supabase/etc.)
+    url = _valid_database_url(os.environ.get("DATABASE_URL", ""))
+    if url:
+        return url
+
+    # 2) Fallback padrão libpq: permite configurar os campos separados, sem montar URL manualmente.
+    host = os.environ.get("PGHOST", "").strip()
+    user = os.environ.get("PGUSER", "").strip()
+    password = os.environ.get("PGPASSWORD", "").strip()
+    database = os.environ.get("PGDATABASE", "").strip()
+    port = os.environ.get("PGPORT", "5432").strip() or "5432"
+    if all((host, user, password, database)):
+        candidate = (
+            f"postgresql://{quote_plus(user)}:{quote_plus(password)}@"
+            f"{host}:{port}/{quote_plus(database)}"
+        )
+        return _valid_database_url(candidate)
+
+    raise RuntimeError(
+        "PostgreSQL não configurado. Defina DATABASE_URL com a Internal Database URL real do Render "
+        "ou configure PGHOST, PGPORT, PGUSER, PGPASSWORD e PGDATABASE."
+    )
 
 
 def _rewrite_sql(sql: str) -> str:

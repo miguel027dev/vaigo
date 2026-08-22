@@ -1,3 +1,4 @@
+# VAIGO Render Blueprint: DATABASE_URL é injetada pelo PostgreSQL gerenciado; não substitua por HOST_GERADO.
 services:
   - type: web
     name: wesafe

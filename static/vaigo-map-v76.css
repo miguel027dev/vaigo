@@ -164,3 +164,8 @@ html[data-vaigo-theme] body.body-nav .ws-app #activeNav.nav-panel.nav-minimal.sh
 /* VAIGO V76.1 — requested cleanup */
 .segment{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 .start-trip-copy small{color:#fff!important;opacity:1!important}
+
+
+/* VAIGO V83 — recent destination buttons removed; keep saved places balanced. */
+.planner-presets{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+@media(max-width:560px){.planner-presets{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
