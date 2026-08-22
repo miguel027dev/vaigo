@@ -10,6 +10,7 @@ import difflib
 import threading
 import copy
 import unicodedata
+import ipaddress
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from concurrent.futures import ThreadPoolExecutor
@@ -362,6 +363,17 @@ def init_db():
                 revoked_at TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS user_access_log (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                ip_address TEXT NOT NULL,
+                user_agent TEXT NOT NULL DEFAULT '',
+                first_seen_at TEXT NOT NULL,
+                last_seen_at TEXT NOT NULL,
+                request_count INTEGER NOT NULL DEFAULT 1,
+                UNIQUE(user_id, ip_address)
+            );
+
             CREATE TABLE IF NOT EXISTS reports (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -548,6 +560,8 @@ def init_db():
 
             CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id, expires_at);
             CREATE INDEX IF NOT EXISTS idx_auth_sessions_expiry ON auth_sessions(expires_at, revoked_at);
+            CREATE INDEX IF NOT EXISTS idx_user_access_user_last ON user_access_log(user_id, last_seen_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_user_access_ip ON user_access_log(ip_address);
             CREATE INDEX IF NOT EXISTS idx_reports_status_created ON reports(status, created_at);
             CREATE INDEX IF NOT EXISTS idx_reports_geo ON reports(latitude, longitude);
             CREATE INDEX IF NOT EXISTS idx_routes_user_created ON route_history(user_id, created_at DESC);
@@ -673,13 +687,100 @@ WEATHER_CACHE = {}
 WEATHER_LOCK = threading.Lock()
 SEARCH_RESULT_CACHE = {}
 SEARCH_RESULT_LOCK = threading.Lock()
+USER_IP_LOG_CACHE = {}
+USER_IP_LOG_LOCK = threading.Lock()
+USER_IP_LOG_INTERVAL = 10 * 60
 
 
 def client_ip():
-    forwarded = request.headers.get("X-Forwarded-For", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.remote_addr or "unknown"
+    """Return the client IP already normalized by ProxyFix.
+
+    ProxyFix is configured with x_for=1 for the Render/reverse-proxy hop, so
+    request.remote_addr is preferable to trusting arbitrary X-Forwarded-For
+    values directly in application code.
+    """
+    raw = (request.remote_addr or "").strip()
+    try:
+        return str(ipaddress.ip_address(raw))
+    except ValueError:
+        return "unknown"
+
+
+def _user_agent_summary(user_agent):
+    ua = (user_agent or "")[:500]
+    low = ua.lower()
+    if "edg/" in low or "edge/" in low:
+        browser = "Edge"
+    elif "opr/" in low or "opera" in low:
+        browser = "Opera"
+    elif "chrome/" in low or "crios/" in low:
+        browser = "Chrome"
+    elif "firefox/" in low or "fxios/" in low:
+        browser = "Firefox"
+    elif "safari/" in low:
+        browser = "Safari"
+    else:
+        browser = "Navegador"
+    if "android" in low:
+        os_name = "Android"
+    elif "iphone" in low or "ipad" in low or "ios" in low:
+        os_name = "iOS/iPadOS"
+    elif "windows" in low:
+        os_name = "Windows"
+    elif "mac os" in low or "macintosh" in low:
+        os_name = "macOS"
+    elif "linux" in low:
+        os_name = "Linux"
+    else:
+        os_name = "Sistema"
+    if "ipad" in low or "tablet" in low:
+        device_type = "Tablet"
+    elif "mobile" in low or "iphone" in low or "android" in low:
+        device_type = "Celular"
+    else:
+        device_type = "Computador"
+    return browser, os_name, device_type
+
+
+def record_user_access(user_id, force=False):
+    """Store a compact, admin-only IP history for authenticated users.
+
+    Writes are throttled per worker/IP so normal map polling does not create
+    unnecessary PostgreSQL traffic. A forced write is used on successful login.
+    """
+    try:
+        uid = int(user_id)
+    except (TypeError, ValueError):
+        return
+    ip = client_ip()
+    if ip == "unknown":
+        return
+    now_ts = time.time()
+    key = (uid, ip)
+    if not force:
+        with USER_IP_LOG_LOCK:
+            if now_ts - USER_IP_LOG_CACHE.get(key, 0) < USER_IP_LOG_INTERVAL:
+                return
+            USER_IP_LOG_CACHE[key] = now_ts
+    ua = (request.headers.get("User-Agent") or "")[:500]
+    now = utcnow_iso()
+    db = get_db()
+    try:
+        db.execute(
+            """INSERT INTO user_access_log(user_id,ip_address,user_agent,first_seen_at,last_seen_at,request_count)
+               VALUES(?,?,?,?,?,1)
+               ON CONFLICT (user_id,ip_address) DO UPDATE SET
+                 user_agent=EXCLUDED.user_agent,
+                 last_seen_at=EXCLUDED.last_seen_at,
+                 request_count=user_access_log.request_count+1""",
+            (uid, ip, ua, now, now),
+        )
+        db.commit()
+        with USER_IP_LOG_LOCK:
+            USER_IP_LOG_CACHE[key] = now_ts
+    except Exception:
+        db.rollback()
+        app.logger.exception("Could not record authenticated user IP")
 
 
 def rate_limit(key, limit=20, window=60):
@@ -810,6 +911,14 @@ def restore_persistent_login():
     else:
         get_db().execute("UPDATE auth_sessions SET last_used_at=? WHERE id=?", (now.isoformat(), row["id"]))
         get_db().commit()
+
+
+@app.before_request
+def record_authenticated_ip():
+    uid = session.get("user_id")
+    if not uid or request.endpoint in {"static", "healthz"}:
+        return
+    record_user_access(uid)
 
 
 @app.after_request
@@ -4475,6 +4584,7 @@ def login():
         session["csrf_token"] = secrets.token_urlsafe(32)
         session.permanent = True
         issue_persistent_login(user["id"])
+        record_user_access(user["id"], force=True)
         db = get_db()
         db.execute("UPDATE users SET last_login_at=? WHERE id=?", (utcnow_iso(), user["id"]))
         db.commit()
@@ -4532,6 +4642,7 @@ def register():
         session["csrf_token"] = secrets.token_urlsafe(32)
         session.permanent = True
         issue_persistent_login(cur.lastrowid)
+        record_user_access(cur.lastrowid, force=True)
         audit("register", {}, cur.lastrowid)
         flash("Conta criada. Agora personalize sua navegação.", "success")
         return redirect(url_for("onboarding", next=safe_next_url(request.args.get("next")) or url_for("map_page")))
@@ -4733,6 +4844,7 @@ def google_callback():
     session["csrf_token"] = secrets.token_urlsafe(32)
     session.permanent = True
     issue_persistent_login(user_id)
+    record_user_access(user_id, force=True)
     audit("google_login_success", {}, user_id)
     flash(f"Bem-vindo, {name.split()[0]}!", "success")
     refreshed = current_user()
@@ -5223,9 +5335,9 @@ def api_admin_user_detail(user_id):
            FROM reports WHERE user_id=? ORDER BY created_at DESC LIMIT 10""",
         (user_id,),
     ).fetchall()
-    sessions = db.execute(
-        """SELECT id,created_at,last_used_at,expires_at,revoked_at
-           FROM auth_sessions WHERE user_id=? ORDER BY last_used_at DESC LIMIT 8""",
+    accesses = db.execute(
+        """SELECT id,ip_address,user_agent,first_seen_at,last_seen_at,request_count
+           FROM user_access_log WHERE user_id=? ORDER BY last_seen_at DESC LIMIT 12""",
         (user_id,),
     ).fetchall()
     counts = db.execute(
@@ -5238,14 +5350,17 @@ def api_admin_user_detail(user_id):
         "user": dict(user),
         "routes": [dict(x) for x in routes],
         "alerts": [{**dict(x), "category_label": CATEGORY_META.get(x["category"], CATEGORY_META["other"])["label"]} for x in alerts],
-        # This version did not historically store IP/User-Agent. Expose real session
-        # timestamps without fabricating device/IP information.
         "accesses": [{
-            "id": int(x["id"]), "browser": "Sessão VAIGO", "os_name": "—", "device_type": "Sessão persistente",
-            "ip_address": "Não registrado", "created_at": x["created_at"], "last_used_at": x["last_used_at"],
-            "expires_at": x["expires_at"], "revoked": bool(x["revoked_at"]),
-        } for x in sessions],
-        "last_ip": None,
+            "id": int(x["id"]),
+            "browser": _user_agent_summary(x["user_agent"])[0],
+            "os_name": _user_agent_summary(x["user_agent"])[1],
+            "device_type": _user_agent_summary(x["user_agent"])[2],
+            "ip_address": x["ip_address"],
+            "created_at": x["first_seen_at"],
+            "last_used_at": x["last_seen_at"],
+            "request_count": int(x["request_count"] or 0),
+        } for x in accesses],
+        "last_ip": accesses[0]["ip_address"] if accesses else None,
         "counts": dict(counts) if counts else {"route_count": 0, "alert_count": 0},
     })
 
