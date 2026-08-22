@@ -1,66 +1,356 @@
-{% extends 'base.html' %}
-{% block title %}Entrar · VAIGO{% endblock %}
-{% block legacy_map_assets %}{% endblock %}
-{% block head %}{% endblock %}
-{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-entry-v64.css') }}?v=64"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-entry-v76.css') }}?v=76">{% endblock %}
-{% block content %}
-<div class="sparker-entry" data-auth-page="login">
-<div class="sparker-splash" aria-hidden="true">
-    <div class="splash-center"><img class="splash-mark" src="{{ url_for('static', filename='vaigo-mark.svg') }}" alt=""><div class="splash-word">VAIGO</div></div>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F7F7FB">
+  <meta name="description" content="VAIGO — navegação adaptativa para uma cidade que muda o tempo todo.">
+  <title>Entrar · VAIGO</title>
+  <style>
+    :root{
+      --bg:#f7f7fb;
+      --surface:#ffffff;
+      --surface-soft:#f1f2f7;
+      --surface-tint:#f5f4ff;
+      --text:#171821;
+      --muted:#707486;
+      --muted-2:#979baa;
+      --line:#e5e6ed;
+      --line-strong:#d9dbe5;
+      --brand:#5b57e8;
+      --brand-2:#716df2;
+      --brand-soft:#eeedff;
+      --mint:#bdf4e4;
+      --success:#16835f;
+      --danger:#d54747;
+      --shadow:0 24px 70px rgba(33,34,56,.10);
+      --shadow-soft:0 10px 30px rgba(42,44,74,.08);
+      --radius-xl:30px;
+      --radius-lg:22px;
+      --radius-md:16px;
+      --radius-sm:12px;
+      --font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);font-family:var(--font);color:var(--text);-webkit-font-smoothing:antialiased}
+    body{min-height:100dvh;overflow-x:hidden}
+    button,input{font:inherit}
+    button,a{-webkit-tap-highlight-color:transparent}
+    a{color:inherit;text-decoration:none}
+    button{cursor:pointer}
+    svg{display:block}
+
+    .auth-page{min-height:100dvh;padding:14px;display:flex;align-items:stretch}
+    .auth-shell{
+      width:100%;min-height:calc(100dvh - 28px);max-width:1580px;margin:auto;
+      display:grid;grid-template-columns:minmax(390px,.84fr) minmax(520px,1.16fr);
+      background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-xl);
+      overflow:hidden;box-shadow:var(--shadow);
+    }
+
+    .auth-pane{position:relative;z-index:3;padding:clamp(30px,4vw,68px);display:flex;flex-direction:column;min-width:0}
+    .brand-row{display:flex;align-items:center;justify-content:space-between;gap:20px}
+    .brand{display:flex;align-items:center;gap:12px;font-size:18px;font-weight:900;letter-spacing:-.7px}
+    .brand-mark{width:40px;height:40px;flex:0 0 auto}
+    .product-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:#fbfbfd;border-radius:999px;padding:8px 10px;color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.04em;white-space:nowrap}
+    .product-pill i{width:7px;height:7px;border-radius:50%;background:#39b98a;box-shadow:0 0 0 4px rgba(57,185,138,.10)}
+
+    .auth-copy{margin:auto 0;max-width:560px;padding:clamp(42px,7vh,86px) 0 36px}
+    .eyebrow{display:flex;align-items:center;gap:10px;color:var(--brand);font-size:12px;font-weight:900;letter-spacing:.13em;text-transform:uppercase}
+    .eyebrow:before{content:"";width:24px;height:2px;border-radius:2px;background:var(--brand)}
+    h1{font-size:clamp(46px,4.35vw,72px);line-height:.94;letter-spacing:clamp(-4px,-.26vw,-2.3px);margin:18px 0 20px;max-width:700px}
+    h1 span{display:block;color:var(--brand)}
+    .lead{margin:0;color:var(--muted);font-size:clamp(15px,1.15vw,18px);line-height:1.65;max-width:510px}
+
+    .status-note{margin-top:22px;display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #dceee7;background:#f6fffb;border-radius:14px;color:#256b54;font-size:13px}
+    .status-note svg{width:18px;height:18px;flex:0 0 auto}
+
+    .auth-actions{margin-top:34px;display:grid;gap:11px;max-width:510px}
+    .auth-button{height:56px;border-radius:15px;border:1px solid var(--line-strong);display:flex;align-items:center;justify-content:center;gap:12px;font-weight:850;font-size:14px;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,background .18s ease;position:relative}
+    .auth-button:hover{transform:translateY(-1px)}
+    .auth-button:active{transform:translateY(0) scale(.994)}
+    .auth-button.google{background:#fff;color:#1f2028;box-shadow:0 5px 14px rgba(34,35,55,.05)}
+    .auth-button.google:hover{border-color:#cfd1dc;box-shadow:0 9px 22px rgba(34,35,55,.08)}
+    .auth-button.google.is-disabled{opacity:.55;pointer-events:none}
+    .google-logo{width:20px;height:20px}
+    .auth-button.email{background:linear-gradient(135deg,var(--brand-2),var(--brand));color:#fff;border-color:transparent;box-shadow:0 12px 26px rgba(91,87,232,.24)}
+    .auth-button.email:hover{box-shadow:0 16px 32px rgba(91,87,232,.30)}
+    .button-arrow{position:absolute;right:17px;width:18px;height:18px;opacity:.9}
+    .button-spinner{display:none;width:18px;height:18px;border-radius:50%;border:2px solid rgba(91,87,232,.18);border-top-color:var(--brand);animation:spin .7s linear infinite}
+    .oauth-loading .google-logo{display:none}.oauth-loading .button-spinner{display:block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .auth-links{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:5px;color:var(--muted);font-size:13px}
+    .auth-links a{font-weight:850;color:var(--text)}
+    .auth-links a:hover{color:var(--brand)}
+    .guest-link{margin-top:10px;height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:13px;font-weight:750;border-radius:12px}
+    .guest-link:hover{background:var(--surface-soft);color:var(--text)}
+    .guest-link svg{width:16px;height:16px}
+
+    .legal{margin-top:auto;padding-top:24px;color:var(--muted-2);font-size:10px;line-height:1.55;max-width:510px}
+    .legal a{text-decoration:underline;text-decoration-color:#c8cad4;text-underline-offset:3px}
+
+    /* Visual de navegação */
+    .route-pane{position:relative;overflow:hidden;background:#f0f1f5;border-left:1px solid var(--line);min-height:620px;isolation:isolate}
+    .route-pane:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(247,247,251,.10),transparent 18%,transparent 80%,rgba(255,255,255,.18));z-index:8}
+    .route-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+    .route-glow{position:absolute;width:520px;height:520px;border-radius:50%;background:rgba(91,87,232,.11);filter:blur(20px);right:-150px;top:-170px;z-index:0}
+
+    .stage-top{position:absolute;left:28px;right:28px;top:28px;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:14px}
+    .live-badge,.mini-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(218,219,228,.94);background:rgba(255,255,255,.88);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:999px;padding:10px 13px;box-shadow:0 8px 22px rgba(39,41,67,.06);color:#555a6d;font-size:11px;font-weight:850}
+    .live-badge i{width:8px;height:8px;border-radius:50%;background:#3ac08f;box-shadow:0 0 0 4px rgba(58,192,143,.12)}
+    .mini-chip svg{width:15px;height:15px;color:var(--brand)}
+
+    .route-summary{position:absolute;left:30px;bottom:30px;z-index:11;width:min(430px,calc(100% - 60px));padding:20px 20px 18px;background:rgba(255,255,255,.94);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(225,226,234,.94);border-radius:22px;box-shadow:0 20px 50px rgba(44,45,73,.12)}
+    .summary-kicker{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--muted-2);font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+    .summary-kicker span:last-child{color:var(--success);letter-spacing:0;text-transform:none}
+    .route-summary h2{margin:11px 0 4px;font-size:21px;line-height:1.12;letter-spacing:-.6px}
+    .route-summary p{margin:0;color:var(--muted);font-size:12px;line-height:1.55}
+    .route-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+    .route-metrics div{padding:10px 8px;border-radius:12px;background:#f7f7fa;text-align:center}
+    .route-metrics strong{display:block;font-size:15px;letter-spacing:-.3px}.route-metrics span{display:block;margin-top:2px;color:var(--muted-2);font-size:9px;font-weight:750}
+
+    .reroute-card{position:absolute;right:28px;top:102px;z-index:11;width:230px;background:rgba(255,255,255,.95);border:1px solid rgba(225,226,234,.95);border-radius:18px;padding:15px;box-shadow:0 16px 36px rgba(44,45,73,.10)}
+    .reroute-icon{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand);margin-bottom:12px}
+    .reroute-icon svg{width:18px;height:18px}
+    .reroute-card b{display:block;font-size:13px;letter-spacing:-.2px}.reroute-card span{display:block;color:var(--muted);font-size:11px;line-height:1.45;margin-top:4px}
+    .reroute-line{height:3px;border-radius:3px;background:#e8e8ef;overflow:hidden;margin-top:11px}.reroute-line i{display:block;width:76%;height:100%;border-radius:inherit;background:var(--brand)}
+
+    .location-dot{position:absolute;z-index:7;width:22px;height:22px;border:5px solid #fff;background:var(--brand);border-radius:50%;box-shadow:0 4px 16px rgba(91,87,232,.36)}
+    .location-dot.start{left:25.5%;top:72%}.location-dot.end{right:24%;top:23%;background:#171821}
+    .location-dot.end:after{content:"";position:absolute;width:4px;height:4px;border-radius:50%;background:var(--mint);left:4px;top:4px}
+
+    .street-label{position:absolute;z-index:4;color:#9b9eaa;font-size:10px;font-weight:800;letter-spacing:.02em;white-space:nowrap;opacity:.75}
+    .street-label.a{left:13%;top:28%;transform:rotate(-8deg)}.street-label.b{left:46%;top:58%;transform:rotate(13deg)}.street-label.c{right:8%;top:46%;transform:rotate(-21deg)}
+
+    .flash-stack{position:fixed;z-index:1000;top:max(16px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(470px,calc(100% - 28px));display:grid;gap:8px}
+    .flash{padding:12px 14px;border-radius:13px;border:1px solid var(--line);background:rgba(255,255,255,.97);box-shadow:var(--shadow-soft);font-size:12px;color:#55596b;display:flex;align-items:flex-start;gap:8px}
+    .flash.error,.flash.danger{border-color:#f1d7d7;color:#a63d3d}.flash.success{border-color:#d8eee6;color:#247158}
+
+    /* Sheet */
+    .auth-sheet{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:18px;opacity:0;visibility:hidden;transition:opacity .2s ease,visibility .2s ease}
+    .auth-sheet.is-open{opacity:1;visibility:visible}
+    .sheet-backdrop{position:absolute;inset:0;border:0;background:rgba(25,26,35,.32);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+    .sheet-card{position:relative;width:min(460px,100%);background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:0 30px 80px rgba(24,25,43,.20);padding:24px;transform:translateY(12px) scale(.985);transition:transform .24s cubic-bezier(.22,.8,.22,1)}
+    .auth-sheet.is-open .sheet-card{transform:none}
+    .sheet-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+    .sheet-head h2{font-size:27px;letter-spacing:-1px;margin:0}.sheet-head p{margin:5px 0 0;color:var(--muted);font-size:13px;line-height:1.5}
+    .sheet-close{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:#f8f8fb;color:#777b8d;display:grid;place-items:center;font-size:24px;line-height:1}
+    .sheet-form{display:grid;gap:15px;margin-top:24px}
+    .field{display:grid;gap:7px}.field label{font-size:11px;font-weight:850;color:#4e5160}
+    .input-shell{position:relative}
+    .field input{width:100%;height:51px;border:1px solid var(--line-strong);border-radius:13px;background:#fbfbfd;color:var(--text);padding:0 14px;outline:0;transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}
+    .field input:focus{background:#fff;border-color:rgba(91,87,232,.75);box-shadow:0 0 0 4px rgba(91,87,232,.09)}
+    .password-toggle{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;border-radius:10px;background:transparent;color:#777b8c;display:grid;place-items:center}
+    .password-toggle:hover{background:#f0f0f5;color:var(--text)}
+    .password-toggle svg{width:18px;height:18px}
+    .sheet-submit{height:52px;border:0;border-radius:13px;background:linear-gradient(135deg,var(--brand-2),var(--brand));color:#fff;font-weight:900;box-shadow:0 11px 24px rgba(91,87,232,.22)}
+    .sheet-submit:disabled{opacity:.65;cursor:wait}
+    .sheet-switch{text-align:center;color:var(--muted);font-size:12px;margin-top:17px}.sheet-switch a{font-weight:850;color:var(--brand)}
+
+    @media (max-width:1040px){
+      .auth-shell{grid-template-columns:minmax(360px,.92fr) 1.08fr}
+      .auth-pane{padding:34px}
+      .auth-copy{padding:48px 0 28px}
+      .reroute-card{width:205px;right:20px}.stage-top{left:20px;right:20px}.route-summary{left:20px;bottom:20px;width:min(390px,calc(100% - 40px))}
+    }
+
+    @media (max-width:820px){
+      .auth-page{padding:0;background:#fff}
+      .auth-shell{min-height:100dvh;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column}
+      .route-pane{order:0;min-height:clamp(235px,37vh,340px);border-left:0;border-bottom:1px solid var(--line)}
+      .auth-pane{order:1;padding:25px clamp(20px,6vw,42px) max(26px,calc(env(safe-area-inset-bottom) + 18px));flex:1}
+      .brand-row{position:absolute;top:max(18px,calc(env(safe-area-inset-top) + 10px));left:clamp(18px,5vw,30px);right:clamp(18px,5vw,30px);z-index:20;pointer-events:none}
+      .brand{background:rgba(255,255,255,.93);border:1px solid rgba(225,226,234,.9);backdrop-filter:blur(14px);border-radius:14px;padding:7px 10px 7px 7px;box-shadow:0 8px 22px rgba(40,42,68,.08)}
+      .brand-mark{width:31px;height:31px}.product-pill{background:rgba(255,255,255,.92);pointer-events:auto}
+      .auth-copy{margin:0;padding:0;max-width:none}
+      .eyebrow{display:none}
+      h1{font-size:clamp(39px,10.8vw,56px);line-height:.96;margin:0 0 14px;letter-spacing:-2.4px}
+      .lead{font-size:14px;line-height:1.55;max-width:600px}
+      .auth-actions{margin-top:24px;max-width:none}
+      .legal{max-width:none}
+      .stage-top{display:none}
+      .route-summary{left:14px;bottom:14px;width:min(390px,calc(100% - 28px));padding:14px;border-radius:17px}
+      .route-summary h2{font-size:16px;margin-top:7px}.route-summary p{display:none}.route-metrics{margin-top:10px}.route-metrics div{padding:7px}.route-metrics strong{font-size:13px}.route-metrics span{font-size:8px}
+      .reroute-card{top:auto;bottom:14px;right:14px;width:190px;padding:12px;border-radius:15px;transform:translateY(-118px)}
+      .reroute-icon{width:29px;height:29px;margin-bottom:8px}.reroute-card span{font-size:10px}.reroute-line{margin-top:8px}
+      .street-label{display:none}
+    }
+
+    @media (max-width:560px){
+      .route-pane{min-height:230px;max-height:250px}
+      .product-pill{font-size:0;width:39px;height:39px;justify-content:center;padding:0}.product-pill i{margin:0}
+      .auth-pane{padding:23px 18px max(22px,calc(env(safe-area-inset-bottom) + 14px))}
+      h1{font-size:clamp(38px,11.2vw,48px)}
+      .lead{font-size:13.5px}
+      .auth-button{height:53px}
+      .auth-links{font-size:12px}
+      .legal{font-size:9px;padding-top:18px}
+      .reroute-card{display:none}
+      .route-summary{width:calc(100% - 28px)}
+      .route-metrics{grid-template-columns:repeat(3,1fr)}
+      .location-dot.start{left:19%;top:63%}.location-dot.end{right:16%;top:28%}
+      .sheet-card{align-self:end;width:100%;border-radius:22px 22px 0 0;padding:22px 18px max(20px,calc(env(safe-area-inset-bottom) + 16px));margin:0 -18px -18px;width:calc(100% + 36px)}
+      .auth-sheet{place-items:end center}
+    }
+
+    @media (max-width:350px){
+      .route-pane{min-height:205px;max-height:220px}
+      .route-summary{bottom:10px;left:10px;width:calc(100% - 20px);padding:11px}.route-summary p{display:none}.summary-kicker{font-size:8px}.route-summary h2{font-size:14px}.route-metrics{margin-top:8px;gap:5px}.route-metrics span{display:none}
+      .auth-pane{padding-inline:14px}
+      h1{font-size:35px}.lead{font-size:12.5px}.auth-button{height:50px;font-size:13px}.legal{font-size:8.5px}
+    }
+
+    @media (min-width:821px) and (max-height:760px){
+      .auth-pane{padding-top:30px;padding-bottom:30px}.auth-copy{padding:30px 0 22px}h1{font-size:49px;margin:14px 0 14px}.lead{font-size:14px}.auth-actions{margin-top:22px}.auth-button{height:50px}.legal{padding-top:16px}.route-pane{min-height:590px}
+    }
+
+    @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+  </style>
+</head>
+<body>
+  {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}
+  <div class="flash-stack" aria-live="polite">
+    {% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
   </div>
+  {% endif %}{% endwith %}
 
-  <main class="v63-entry-shell">
-    <section class="v63-entry-panel">
-      <div class="v63-entry-brand"><img src="{{ url_for('static', filename='vaigo-mark.svg') }}" alt=""><b>VAIGO</b><em>NAVEGAÇÃO ADAPTATIVA</em></div>
-      <div class="v63-entry-kicker">Seu trajeto, organizado</div>
-      <h1>Menos ruído.<span>Mais caminho.</span></h1>
-      <p class="v63-entry-lead">Rotas rápidas, alternativas úteis e contexto do trajeto em uma interface feita para você decidir em segundos.</p>
-      <div class="v63-entry-proof">
-        <span><i data-lucide="route" width="12"></i>10 rotas para testar</span>
-        <span><i data-lucide="waypoints" width="12"></i>Micro-rotas</span>
-        <span><i data-lucide="shield-check" width="12"></i>Contexto de segurança</span>
-      </div>
-
-      <div class="v63-auth-block">
-        {% if request.args.get('logged_out') %}<div class="auth-logout-note"><i data-lucide="check-circle-2" width="16"></i><div><b>Sessão encerrada</b><span>Você saiu da sua conta com segurança.</span></div></div>{% endif %}
-        <div class="v63-auth-label"><span>Começar agora</span><span>leva menos de um minuto</span></div>
-        {% if google_ready %}
-        <a class="auth-google auth-google-primary" id="googleOAuthLink" href="{{ url_for('google_login', next=request.args.get('next')) }}" data-google-auth>
-          <svg class="google-logo" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.92h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.33 2.98-7.38Z"/><path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.62-2.39l-3.24-2.51c-.9.6-2.04.96-3.38.96-2.61 0-4.82-1.76-5.61-4.13H3.05v2.59A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.39 13.93A6.02 6.02 0 0 1 6.08 12c0-.67.12-1.32.31-1.93V7.48H3.05A10 10 0 0 0 2 12c0 1.61.39 3.14 1.05 4.52l3.34-2.59Z"/><path fill="#EA4335" d="M12 5.94c1.47 0 2.79.51 3.83 1.5l2.87-2.87C16.96 2.95 14.7 2 12 2a10 10 0 0 0-8.95 5.48l3.34 2.59C7.18 7.7 9.39 5.94 12 5.94Z"/></svg>
-          <span>Continuar com Google</span><small>recomendado</small>
-        </a>
-        {% else %}
-        <div class="auth-google auth-google-primary is-disabled" aria-disabled="true"><svg class="google-logo" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#A4A9B4"/></svg><span>Google indisponível</span><small>use e-mail</small></div>
-        {% endif %}
-        <div class="v63-auth-row">
-          <a class="auth-choice primary" href="#loginSheet" data-sheet-open="loginSheet"><i data-lucide="mail" width="17"></i><span>Entrar com e-mail</span></a>
-          <a class="auth-choice secondary" href="{{ url_for('register', next=request.args.get('next')) }}#registerSheet"><i data-lucide="user-plus" width="17"></i><span>Criar conta</span></a>
+  <main class="auth-page" data-auth-page="login">
+    <section class="auth-shell">
+      <div class="auth-pane">
+        <div class="brand-row">
+          <a class="brand" href="{{ url_for('index') }}" aria-label="VAIGO">
+            <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+              <defs><linearGradient id="vaigoG" x1="8" y1="8" x2="56" y2="56"><stop stop-color="#706DF2"/><stop offset="1" stop-color="#4E50D8"/></linearGradient></defs>
+              <rect x="4" y="4" width="56" height="56" rx="18" fill="url(#vaigoG)"/>
+              <path d="M16 19.5 29.2 44c1.3 2.4 4.6 2.4 5.9 0L48 19.5" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="16" cy="19.5" r="3.4" fill="#BDF4E4"/><path d="m43.6 18.6 7.8.2-4.1 6.7" fill="#fff"/>
+            </svg>
+            <span>VAIGO</span>
+          </a>
+          <span class="product-pill"><i></i>NAVEGAÇÃO ADAPTATIVA</span>
         </div>
-        <a class="auth-guest" href="{{ url_for('index') }}"><i data-lucide="map" width="14"></i>Explorar o mapa sem conta</a>
-        <div class="auth-legal">Ao continuar, você concorda com nossos <a href="{{ url_for('about') }}">Termos de Uso</a> e <a href="{{ url_for('about') }}">Política de Privacidade</a>.</div>
-      </div>
-    </section>
 
-    <section class="v63-route-stage" aria-label="Prévia da experiência VAIGO">
-      <div class="v63-stage-brand"><i></i> MAPA AO VIVO · SÃO PAULO</div>
-      <picture class="v76-entry-picture"><source media="(max-width: 760px)" srcset="{{ url_for('static', filename='vaigo-entry-day-mobile-v76.svg') }}"><img class="v64-entry-city" src="{{ url_for('static', filename='vaigo-entry-day-v76.svg') }}" alt="Ilustração clara de uma cidade com uma rota de navegação VAIGO"></picture>
-      <div class="v63-stage-card route"><small>PRÓXIMO TRAJETO</small><b>Morumbi → Av. Paulista</b><span>Alternativa ajustada para evitar lentidão forte.</span><div class="v63-stage-meta"><em>18 min</em><em>9,4 km</em><em>+2 opções</em></div></div>
-      <div class="v63-stage-card metric"><small>FLUXO DA ROTA</small><b>78%</b><span>trânsito fluindo bem</span><div class="meter"><i></i></div></div>
+        <div class="auth-copy">
+          <div class="eyebrow">Uma rota que reage</div>
+          <h1>O trânsito muda.<span>Sua rota também.</span></h1>
+          <p class="lead">Encontre caminhos alternativos, micro-rotas e desvios úteis quando a cidade trava — sem transformar o mapa em uma tela cheia de distrações.</p>
+
+          {% if request.args.get('logged_out') %}
+          <div class="status-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6"/><circle cx="12" cy="12" r="10"/></svg>
+            Sessão encerrada com segurança.
+          </div>
+          {% endif %}
+
+          <div class="auth-actions">
+            {% if google_ready %}
+            <a class="auth-button google" id="googleOAuthLink" href="{{ url_for('google_login', next=request.args.get('next')) }}" data-google-auth>
+              <svg class="google-logo" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.92h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.33 2.98-7.38Z"/><path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.62-2.39l-3.24-2.51c-.9.6-2.04.96-3.38.96-2.61 0-4.82-1.76-5.61-4.13H3.05v2.59A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.39 13.93A6.02 6.02 0 0 1 6.08 12c0-.67.12-1.32.31-1.93V7.48H3.05A10 10 0 0 0 2 12c0 1.61.39 3.14 1.05 4.52l3.34-2.59Z"/><path fill="#EA4335" d="M12 5.94c1.47 0 2.79.51 3.83 1.5l2.87-2.87C16.96 2.95 14.7 2 12 2a10 10 0 0 0-8.95 5.48l3.34 2.59C7.18 7.7 9.39 5.94 12 5.94Z"/></svg>
+              <span class="button-spinner" aria-hidden="true"></span>
+              Continuar com Google
+            </a>
+            {% else %}
+            <div class="auth-button google is-disabled" aria-disabled="true">Google indisponível</div>
+            {% endif %}
+
+            <button class="auth-button email" type="button" data-sheet-open="loginSheet">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+              Entrar com e-mail
+              <svg class="button-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+
+            <div class="auth-links">Ainda não tem conta? <a href="{{ url_for('register', next=request.args.get('next')) }}#registerSheet">Criar conta</a></div>
+            <a class="guest-link" href="{{ url_for('index') }}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18 3 21V6l6-3 6 3 6-3v15l-6 3-6-3Z"/><path d="M9 3v15M15 6v15"/></svg>
+              Explorar o mapa sem conta
+            </a>
+          </div>
+        </div>
+
+        <div class="legal">Ao continuar, você concorda com os <a href="{{ url_for('about') }}">Termos de Uso</a> e a <a href="{{ url_for('about') }}">Política de Privacidade</a> do VAIGO.</div>
+      </div>
+
+      <aside class="route-pane" aria-label="Prévia visual da navegação adaptativa VAIGO">
+        <div class="route-glow"></div>
+        <svg class="route-canvas" viewBox="0 0 900 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <rect width="900" height="900" fill="#F0F1F5"/>
+          <g fill="#E7E8ED" opacity=".92">
+            <path d="M-40 110 175 60l80 97-62 105-164 32Z"/><path d="m286 23 208 14 18 127-145 58-111-73Z"/><path d="m561 27 248 43 76 113-90 80-221-65Z"/>
+            <path d="m48 343 197-62 89 80-63 132-206 39-67-91Z"/><path d="m367 276 166-31 88 80-32 143-180 28-100-93Z"/><path d="m658 299 206-32 68 112-59 132-206 13-57-99Z"/>
+            <path d="m-2 596 194-51 119 89-45 135-215 56-71-108Z"/><path d="m353 555 203-32 74 126-73 132-188 42-90-123Z"/><path d="m678 578 171-41 91 94-32 159-206 65-82-123Z"/>
+          </g>
+          <g fill="none" stroke="#FFFFFF" stroke-linecap="round">
+            <path d="M-20 188C180 210 282 160 443 192s307 148 488 80" stroke-width="34"/>
+            <path d="M76-40c41 188 46 296 18 458S48 706 98 948" stroke-width="30"/>
+            <path d="M321-28c-30 167-8 287 75 392s115 241 70 564" stroke-width="38"/>
+            <path d="M742-20c-98 171-104 292-58 410s48 277-16 533" stroke-width="32"/>
+            <path d="M-44 512c196-56 347-27 491 30s299 64 498 5" stroke-width="36"/>
+            <path d="M-39 755c203-42 325-38 478 22s318 45 508-11" stroke-width="30"/>
+          </g>
+          <g fill="none" stroke="#D3D5DE" stroke-width="2.4" opacity=".75" stroke-linecap="round" stroke-dasharray="7 9">
+            <path d="M-20 188C180 210 282 160 443 192s307 148 488 80"/><path d="M321-28c-30 167-8 287 75 392s115 241 70 564"/><path d="M742-20c-98 171-104 292-58 410s48 277-16 533"/><path d="M-44 512c196-56 347-27 491 30s299 64 498 5"/>
+          </g>
+          <path d="M205 702c59-47 84-105 87-169 3-67 72-85 115-112 59-38 56-104 105-143 39-31 103-26 145-81" fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M205 702c59-47 84-105 87-169 3-67 72-85 115-112 59-38 56-104 105-143 39-31 103-26 145-81" fill="none" stroke="#5B57E8" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M404 423c-38 2-70-19-107-20-43-1-77 30-111 59" fill="none" stroke="#CBCDD7" stroke-width="6" stroke-linecap="round" stroke-dasharray="8 9"/>
+          <g fill="#D4D6DE"><circle cx="818" cy="397" r="5"/><circle cx="132" cy="340" r="5"/><circle cx="575" cy="618" r="5"/><circle cx="631" cy="113" r="5"/></g>
+        </svg>
+
+        <div class="stage-top"><div class="live-badge"><i></i>Mapa ao vivo · São Paulo</div><div class="mini-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m4 15 4-4 4 4 8-8"/><path d="M20 10V7h-3"/></svg>rota ajustada</div></div>
+        <span class="street-label a">Av. Rebouças</span><span class="street-label b">Rua da Consolação</span><span class="street-label c">Av. Paulista</span>
+        <i class="location-dot start"></i><i class="location-dot end"></i>
+
+        <div class="reroute-card">
+          <div class="reroute-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h9a4 4 0 0 1 4 4v10"/><path d="m13 18 3 3 3-3"/><path d="M21 7h-5"/></svg></div>
+          <b>Trânsito forte à frente</b><span>VAIGO encontrou uma alternativa por vias laterais.</span><div class="reroute-line"><i></i></div>
+        </div>
+
+        <div class="route-summary">
+          <div class="summary-kicker"><span>Trajeto adaptado</span><span>−8 min</span></div>
+          <h2>Morumbi → Av. Paulista</h2>
+          <p>Desvio aplicado antes do trecho de maior lentidão.</p>
+          <div class="route-metrics"><div><strong>18 min</strong><span>CHEGADA</span></div><div><strong>9,4 km</strong><span>DISTÂNCIA</span></div><div><strong>2</strong><span>ALTERNATIVAS</span></div></div>
+        </div>
+      </aside>
     </section>
   </main>
 
-  <section class="auth-sheet" id="loginSheet" aria-label="Entrar" aria-hidden="true">
+  <section class="auth-sheet" id="loginSheet" aria-label="Entrar com e-mail" aria-hidden="true">
     <button type="button" class="sheet-backdrop" data-sheet-close aria-label="Fechar"></button>
-    <div class="sheet-card"><div class="sheet-grab"></div><header class="sheet-head"><div><h2>Entrar</h2><p>Acesse sua conta para continuar suas rotas.</p></div><button type="button" class="sheet-close" data-sheet-close aria-label="Fechar">×</button></header>
+    <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+      <header class="sheet-head">
+        <div><h2 id="loginTitle">Entrar</h2><p>Use seu e-mail e senha para acessar sua conta VAIGO.</p></div>
+        <button type="button" class="sheet-close" data-sheet-close aria-label="Fechar">×</button>
+      </header>
       <form method="post" action="{{ url_for('login', next=request.args.get('next')) }}#loginSheet" class="sheet-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="sheet-field"><label for="email">E-mail</label><input id="email" class="sheet-input" type="email" name="email" autocomplete="email" inputmode="email" required placeholder="voce@exemplo.com"></div>
-        <div class="sheet-field"><label for="password">Senha</label><div class="password-shell"><input id="password" class="sheet-input" type="password" name="password" autocomplete="current-password" required placeholder="Sua senha"><button class="password-toggle" type="button" data-password-toggle="password" aria-label="Mostrar senha"><i data-lucide="eye" width="18"></i></button></div></div>
-        <button class="sheet-submit" type="submit">Entrar</button>
+        <div class="field"><label for="email">E-mail</label><input id="email" type="email" name="email" autocomplete="email" inputmode="email" required placeholder="voce@exemplo.com"></div>
+        <div class="field"><label for="password">Senha</label><div class="input-shell"><input id="password" type="password" name="password" autocomplete="current-password" required placeholder="Sua senha"><button class="password-toggle" type="button" data-password-toggle="password" aria-label="Mostrar senha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+        <button class="sheet-submit" type="submit">Entrar na minha conta</button>
       </form>
       <div class="sheet-switch">Ainda não tem conta? <a href="{{ url_for('register', next=request.args.get('next')) }}#registerSheet">Criar conta</a></div>
     </div>
   </section>
-</div>
-{% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='auth-entry.js') }}?v=63"></script>{% endblock %}
+
+  <script>
+  (()=>{
+    const sheet=document.getElementById('loginSheet');
+    const openSheet=()=>{sheet.classList.add('is-open');sheet.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';requestAnimationFrame(()=>document.getElementById('email')?.focus({preventScroll:true}));};
+    const closeSheet=()=>{sheet.classList.remove('is-open');sheet.setAttribute('aria-hidden','true');document.body.style.overflow='';if(location.hash==='#loginSheet')history.replaceState(null,'',location.pathname+location.search);};
+    document.querySelectorAll('[data-sheet-open="loginSheet"]').forEach(btn=>btn.addEventListener('click',()=>{history.replaceState(null,'','#loginSheet');openSheet();}));
+    document.querySelectorAll('[data-sheet-close]').forEach(btn=>btn.addEventListener('click',closeSheet));
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet.classList.contains('is-open'))closeSheet();});
+    if(location.hash==='#loginSheet')openSheet();
+
+    const toggle=document.querySelector('[data-password-toggle]');
+    toggle?.addEventListener('click',()=>{const input=document.getElementById('password');const show=input.type==='password';input.type=show?'text':'password';toggle.setAttribute('aria-label',show?'Ocultar senha':'Mostrar senha');input.focus({preventScroll:true});});
+
+    document.querySelectorAll('[data-google-auth]').forEach(link=>link.addEventListener('click',()=>{link.classList.add('oauth-loading');link.setAttribute('aria-busy','true');}));
+    document.querySelector('.sheet-form')?.addEventListener('submit',e=>{if(!e.currentTarget.checkValidity())return;const submit=e.currentTarget.querySelector('.sheet-submit');submit.disabled=true;submit.textContent='Entrando…';});
+    setTimeout(()=>document.querySelectorAll('.flash').forEach(el=>el.remove()),6000);
+  })();
+  </script>
+</body>
+</html>
