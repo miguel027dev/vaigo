@@ -1,5 +1,5 @@
 /* VAIGO V65 — compact mobile free-map indicator.
-   Scope: only the "Mapa livre" chip shown after the user drags the map during navigation. */
+   Scope: legacy free-map navigation chip styles retained for compatibility. */
 
 @media (max-width: 899px){
   body.body-nav .nav-map-mode.show{

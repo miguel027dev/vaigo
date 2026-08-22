@@ -2,7 +2,7 @@
 {% block title %}Criar conta · VAIGO{% endblock %}
 {% block legacy_map_assets %}{% endblock %}
 {% block head %}{% endblock %}
-{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-entry-v64.css') }}?v=64">{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-entry-v64.css') }}?v=64"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-entry-v76.css') }}?v=76">{% endblock %}
 {% block content %}
 <div class="sparker-entry" data-auth-page="register">
 <div class="sparker-splash" aria-hidden="true"><div class="splash-center"><img class="splash-mark" src="{{ url_for('static', filename='vaigo-mark.svg') }}" alt=""><div class="splash-word">VAIGO</div></div></div>
@@ -26,7 +26,7 @@
 
     <section class="v63-route-stage" aria-label="Prévia da experiência VAIGO">
       <div class="v63-stage-brand"><i></i> MAPA AO VIVO · SUA ROTA</div>
-      <img class="v64-entry-city" src="{{ url_for('static', filename='vaigo-entry-city-v64.webp') }}" alt="Cidade à noite com uma rota VAIGO iluminada">
+      <picture class="v76-entry-picture"><source media="(max-width: 760px)" srcset="{{ url_for('static', filename='vaigo-entry-day-mobile-v76.svg') }}"><img class="v64-entry-city" src="{{ url_for('static', filename='vaigo-entry-day-v76.svg') }}" alt="Ilustração clara de uma cidade com uma rota de navegação VAIGO"></picture>
       <div class="v63-stage-card route"><small>PRONTO PARA COMEÇAR</small><b>Preferências em um só lugar</b><span>Escolha transporte, rota e aparência sem complicação.</span><div class="v63-stage-meta"><em>Carro</em><em>Moto</em><em>A pé</em></div></div>
       <div class="v63-stage-card metric"><small>CONFIGURAÇÃO</small><b>1 min</b><span>ajuste rápido</span><div class="meter"><i></i></div></div>
     </section>
