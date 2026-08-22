@@ -1,0 +1,21 @@
+/* VAIGO V80 — compact planner polish layered after V78 */
+:root{--planner-collapsed-h:160px}
+#planSheet{max-height:min(64dvh,560px)!important}
+#planSheet .planner-heading{padding-bottom:9px!important}
+#planSheet .planner-heading-copy b{font-size:20px!important;line-height:1.08!important}
+#planSheet .planner-heading-copy span{margin-top:3px!important}
+#planSheet .planner-search-row{margin-top:0!important}
+#planSheet .planner-search-card.search-card{box-shadow:0 7px 20px rgba(28,35,62,.07)!important}
+#planSheet .planner-expanded{max-height:min(34dvh,300px)!important;overflow:auto!important;overscroll-behavior:contain!important}
+@media (min-width:768px){
+  #planSheet{top:auto!important;left:18px!important;right:auto!important;bottom:18px!important;width:min(390px,calc(100vw - 72px))!important;max-width:390px!important;max-height:min(62dvh,540px)!important;padding:9px 13px 14px!important;border-radius:26px!important;overflow:hidden!important}
+  #planSheet.sheet-collapsed{transform:none!important}
+  #planSheet.sheet-collapsed .planner-presets,#planSheet.sheet-collapsed .planner-expanded{display:none!important}
+  #planSheet.sheet-collapsed .planner-expand-hint{display:flex!important;margin-top:8px!important}
+  #planSheet.sheet-expanded .planner-presets{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+  #planSheet .grab.planner-grab{display:block!important;height:18px!important;padding:6px 0!important;margin:-3px auto 2px!important}
+}
+@media (max-width:767px){:root{--planner-collapsed-h:156px}#planSheet{max-height:min(68dvh,540px)!important}}
+@media (max-width:390px){:root{--planner-collapsed-h:152px}#planSheet{left:6px!important;right:6px!important;padding-bottom:max(12px,calc(env(safe-area-inset-bottom) + 8px))!important}#planSheet .planner-heading-copy b{font-size:18px!important}#planSheet .planner-heading-copy span{display:none!important}}
+@media (max-height:650px) and (max-width:767px){:root{--planner-collapsed-h:146px}#planSheet{max-height:64dvh!important}#planSheet .planner-expanded{max-height:28dvh!important}}
+#map[data-map-error="1"]:after{content:"Não foi possível carregar o mapa";position:absolute;inset:0;display:grid;place-items:center;padding:24px;color:#6f7788;font-size:12px;font-weight:750;text-align:center;background:linear-gradient(145deg,#eef1f5,#e3e7ed)}
