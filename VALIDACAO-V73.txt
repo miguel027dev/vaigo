@@ -1,0 +1,14 @@
+VALIDAÇÃO V73
+
+[OK] app.py compila com py_compile
+[OK] mobile_routes.py compila com py_compile
+[OK] app.py corresponde byte a byte ao blob estável atual do GitHub
+[OK] mobile_routes.py corresponde ao blob atual do GitHub
+[OK] requirements.txt corresponde ao blob estável atual
+[OK] render.yaml corresponde ao blob estável atual
+[OK] ponte VAIGO_ANDROID_MOBILE_BRIDGE_V1 registrada no app.py
+[OK] index.html carrega vaigo-map-v69.css, v70.css e v71.css
+[OK] profile.html carrega vaigo-profile-v72.css
+[OK] nenhum import psycopg/db_backend no runtime
+[OK] pacote não contém db_backend.py nem migrate_sqlite_to_postgres.py
+[OK] banco SQLite de produção não é sobrescrito pelo ZIP

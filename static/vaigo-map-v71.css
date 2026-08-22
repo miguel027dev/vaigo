@@ -1,0 +1,383 @@
+/* VAIGO V71 — map polish focused on destination card flow and mobile spacing */
+
+:root{
+  --v71-sheet-edge: 12px;
+  --v71-ink: #101318;
+  --v71-muted: #65707c;
+  --v71-line: rgba(255,255,255,.08);
+  --v71-surface: rgba(12,14,18,.975);
+  --v71-soft-surface: rgba(255,255,255,.035);
+  --v71-accent: #5B5CE2;
+}
+
+#app, .map-shell, .sheet, .search-card, .destination-confirm, .nav-panel{
+  overflow-x: hidden;
+}
+
+.sheet{
+  left: var(--v71-sheet-edge) !important;
+  right: var(--v71-sheet-edge) !important;
+  width: auto !important;
+  max-width: none !important;
+  overscroll-behavior: contain;
+}
+
+.sheet,
+.grab,
+#planGrab,
+#plannerExpandToggle{
+  touch-action: pan-y;
+}
+
+.sheet.sheet-dragging,
+.sheet.sheet-collapsed{
+  will-change: transform;
+}
+
+.welcome,
+#routeState,
+.planner-expanded,
+.search-results,
+.route-card,
+.route-insight,
+.sub-actions,
+.parking-nearby{
+  overflow-x: hidden;
+}
+
+.planner-search-row{
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.planner-search-card{
+  min-width: 0;
+}
+
+.planner-adjust-btn{
+  align-self: stretch;
+  min-width: 58px;
+  padding: 0 11px;
+  border-radius: 16px;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.planner-adjust-btn span{
+  font-size: 7px;
+  line-height: 1;
+}
+
+.planner-expand-hint{
+  min-height: 42px;
+  margin-top: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.022));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #eef2f6;
+  font-weight: 900;
+  letter-spacing: .01em;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+  transition: transform .16s ease, background .16s ease, border-color .16s ease;
+}
+
+.planner-expand-hint:active{
+  transform: scale(.985);
+}
+
+.planner-expand-hint svg{
+  color: #b9c0ca;
+}
+
+#plannerExpandToggle[aria-expanded="true"] svg{
+  transform: rotate(180deg);
+}
+
+.planner-section-head{
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.planner-section-head > div{
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.planner-section-head b{
+  order: 1;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.planner-section-head small{
+  order: 2;
+  margin-top: 0;
+  color: #8d96a1;
+  font-size: 7px;
+  letter-spacing: .12em;
+}
+
+.planner-section-head > span{
+  align-self: center;
+  text-align: right;
+  font-size: 7px;
+  color: #7e8895;
+}
+
+.planner-tip{
+  display: grid;
+  grid-template-columns: 18px minmax(0,1fr);
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 11px;
+  margin-top: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.06);
+  background: rgba(255,255,255,.028);
+}
+
+.planner-tip i,
+.planner-tip svg{
+  margin-top: 1px;
+  color: #adb5c0;
+}
+
+.planner-tip span{
+  display: block;
+  margin: 0;
+  color: #a9b0b9;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.search-results{
+  padding: 7px;
+}
+
+.search-item,
+.search-item.rich{
+  background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(248,250,252,.96));
+  border: 1px solid rgba(18,24,32,.05);
+  box-shadow: 0 8px 18px rgba(0,0,0,.10);
+}
+
+.search-item + .search-item{
+  margin-top: 6px;
+}
+
+.search-item:active,
+.search-item.rich:active{
+  background: linear-gradient(180deg, rgba(244,247,250,.98), rgba(236,240,244,.96));
+}
+
+.result-icon{
+  background: linear-gradient(145deg, rgba(255,109,41,.14), rgba(91,92,226,.08));
+  border: 1px solid rgba(17,22,29,.06);
+  color: #20262d;
+}
+
+.result-copy b,
+.result-copy small,
+.result-address,
+.result-meta,
+.place-popup h4,
+.place-popup p,
+.place-popup-meta,
+#destinationConfirmTitle,
+#destinationConfirmAddress{
+  color: var(--v71-ink);
+}
+
+.result-address,
+.result-copy small,
+.result-meta,
+#destinationConfirmAddress{
+  color: var(--v71-muted);
+}
+
+.result-meta{
+  border-color: rgba(16,19,24,.08);
+  background: rgba(16,19,24,.035);
+}
+
+.place-popup{
+  color: var(--v71-ink);
+}
+
+.place-popup-use{
+  background: linear-gradient(135deg,#665ff0,#4f52dc);
+  color: #fff;
+}
+
+.destination-confirm{
+  left: var(--v71-sheet-edge) !important;
+  right: var(--v71-sheet-edge) !important;
+  border-radius: 26px;
+  padding: 10px 12px 12px;
+}
+
+.destination-confirm .grab-mini{
+  width: 42px;
+  margin-bottom: 9px;
+}
+
+.destination-confirm small{
+  color: #828b96;
+}
+
+.destination-confirm h3{
+  color: #f3f5f8;
+}
+
+.destination-confirm p{
+  color: #a7afb8;
+}
+
+.customize-route-kicker{
+  margin-top: 7px;
+  margin-bottom: 8px;
+}
+
+.customize-route-kicker span{
+  color: #8b95a0;
+}
+
+.customize-route-kicker b{
+  color: #eef2f5;
+}
+
+.route-mode-hidden{
+  display: none !important;
+}
+
+.travel{
+  margin-top: 2px;
+}
+
+.parking-nearby{
+  margin-top: 10px;
+  border-radius: 18px;
+}
+
+.parking-head b{
+  font-size: 11px;
+}
+
+.parking-list{
+  margin-top: 8px;
+}
+
+.start-trip-cta{
+  margin-top: 10px;
+}
+
+.start-trip-copy b{
+  color: #1f1209;
+}
+
+.start-trip-copy small{
+  color: rgba(28,17,10,.82) !important;
+  font-weight: 820;
+}
+
+.nav-feedback{
+  opacity: .96;
+}
+
+.body-nav .nav-feedback.show{
+  gap: 8px;
+  padding: 7px 8px 7px 10px;
+  border-radius: 14px;
+  background: rgba(10,12,15,.86);
+}
+
+.nav-feedback-copy{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nav-feedback-copy span{
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nav-feedback-copy small{
+  color: #8e98a5;
+  font-size: 6px;
+  letter-spacing: .11em;
+}
+
+.nav-feedback-copy b{
+  color: #eef2f6;
+  font-size: 9px;
+}
+
+.nav-feedback-actions{
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nav-feedback button{
+  min-width: 52px;
+}
+
+#rerouteNotice{
+  display: none !important;
+}
+
+.route-card,
+.route-insight,
+.parking-nearby,
+.preview-actions,
+.disclaimer{
+  animation: v71CardRise .20s cubic-bezier(.2,.8,.2,1);
+}
+
+@keyframes v71CardRise{
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1;transform:none}
+}
+
+@media (max-width: 390px){
+  .sheet,
+  .destination-confirm{
+    left: 8px !important;
+    right: 8px !important;
+  }
+
+  .planner-search-row{
+    gap: 7px;
+  }
+
+  .planner-adjust-btn{
+    min-width: 56px;
+    padding: 0 9px;
+  }
+
+  .planner-section-head > span{
+    max-width: 84px;
+  }
+
+  .search-item,
+  .search-item.rich{
+    grid-template-columns: 34px minmax(0,1fr) auto;
+  }
+
+  .result-copy b{
+    font-size: 10.5px;
+  }
+}
