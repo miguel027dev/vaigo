@@ -41,6 +41,13 @@ def database_url() -> str:
     # Some providers still emit the legacy postgres:// prefix.
     if url.startswith("postgres://"):
         url = "postgresql://" + url[len("postgres://"):]
+    lowered = url.lower()
+    obvious_placeholders = ("@host/", "@hostname/", "@host_real/", ":senha@", "/nome_real_do_banco")
+    if any(marker in lowered for marker in obvious_placeholders):
+        raise RuntimeError(
+            "DATABASE_URL contém placeholder (host/hostname/senha/banco). "
+            "No Render use a connection string real ou o render.yaml deste pacote, que injeta a URL automaticamente."
+        )
     return url
 
 

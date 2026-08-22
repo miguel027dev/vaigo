@@ -667,7 +667,25 @@ def init_db():
         db.close()
 
 
-init_db()
+def init_db_with_retry():
+    """Initialize PostgreSQL with a short retry window during platform startup."""
+    attempts = max(1, min(10, int(os.environ.get("DATABASE_INIT_RETRIES", "6") or 6)))
+    delay = max(1, min(10, int(os.environ.get("DATABASE_INIT_RETRY_DELAY", "2") or 2)))
+    last_error = None
+    for attempt in range(1, attempts + 1):
+        try:
+            init_db()
+            return
+        except Exception as exc:
+            last_error = exc
+            if attempt >= attempts:
+                break
+            print(f"[VAIGO] PostgreSQL ainda não disponível (tentativa {attempt}/{attempts}); nova tentativa em {delay}s: {exc}", flush=True)
+            time.sleep(delay)
+    raise last_error
+
+
+init_db_with_retry()
 
 # -----------------------------
 # Security / session helpers

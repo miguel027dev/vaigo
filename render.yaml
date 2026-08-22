@@ -2,8 +2,31 @@ services:
   - type: web
     name: wesafe
     runtime: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
     healthCheckPath: /healthz
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vaigo-postgres
+          property: connectionString
+      - key: DATABASE_CONNECT_TIMEOUT
+        value: "10"
+      - key: WESAFE_SECRET_KEY
+        generateValue: true
+      - key: MAPBOX_ACCESS_TOKEN
+        sync: false
+      - key: WESAFE_ADMIN_EMAIL
+        sync: false
+      - key: WESAFE_ADMIN_PASSWORD
+        sync: false
+      - key: SPARK_OWNER_EMAIL
+        sync: false
 
-# Configure no painel do Render (Environment):
+databases:
+  - name: vaigo-postgres
+    plan: free
+    databaseName: vaigodb
+    user: vaigo
+    ipAllowList: []
