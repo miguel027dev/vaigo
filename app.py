@@ -4,7 +4,6 @@ import math
 import time
 import json
 import secrets
-import sqlite3
 import hashlib
 import hmac
 import difflib
@@ -17,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse, urlencode
 
 import requests
+from db_backend import connect_db, table_columns, IntegrityError
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import (
     Flask, render_template, request, redirect, url_for, session,
@@ -47,15 +47,7 @@ def load_local_env():
 
 load_local_env()
 
-_configured_db = os.environ.get("WESAFE_DB", "").strip()
-_render_disk_dir = os.environ.get("RENDER_DISK_PATH", "/var/data").strip()
-if _configured_db:
-    DB_PATH = _configured_db
-elif _render_disk_dir and os.path.isdir(_render_disk_dir):
-    # If a Render persistent disk is mounted at /var/data, use it automatically.
-    DB_PATH = os.path.join(_render_disk_dir, "wesafe.db")
-else:
-    DB_PATH = os.path.join(BASE_DIR, "wesafe.db")
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 SECRET_KEY = os.environ.get("WESAFE_SECRET_KEY", "dev-change-this-wesafe-secret-key")
 MAPBOX_ACCESS_TOKEN = os.environ.get("MAPBOX_ACCESS_TOKEN", "").strip()
 # X17 — environmental map styles. MAPBOX_STYLE remains as a backwards-compatible
@@ -281,10 +273,7 @@ def security_headers(response):
 
 def get_db():
     if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
-        g.db.execute("PRAGMA foreign_keys = ON")
-        g.db.execute("PRAGMA journal_mode = WAL")
+        g.db = connect_db()
     return g.db
 
 
@@ -320,392 +309,348 @@ def verify_password(stored, password):
 
 
 def init_db():
-    db = sqlite3.connect(DB_PATH)
-    db.execute("PRAGMA foreign_keys = ON")
-    db.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE COLLATE NOCASE,
-            password_hash TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('user','admin')),
-            locale TEXT NOT NULL DEFAULT 'pt-BR',
-            is_active INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT NOT NULL,
-            last_login_at TEXT,
-            google_sub TEXT,
-            avatar_url TEXT NOT NULL DEFAULT '',
-            auth_provider TEXT NOT NULL DEFAULT 'password',
-            age INTEGER,
-            sex TEXT NOT NULL DEFAULT '',
-            is_app_driver INTEGER,
-            night_safety_mode INTEGER NOT NULL DEFAULT 1,
-            route_preference TEXT NOT NULL DEFAULT 'balanced',
-            onboarding_completed_at TEXT,
-            distance_unit TEXT NOT NULL DEFAULT 'km',
-            vehicle_make TEXT NOT NULL DEFAULT '',
-            vehicle_model TEXT NOT NULL DEFAULT '',
-            vehicle_plate TEXT NOT NULL DEFAULT '',
-            vehicle_year TEXT NOT NULL DEFAULT '',
-            preferred_fuel_networks TEXT NOT NULL DEFAULT '[]',
-            home_label TEXT NOT NULL DEFAULT '',
-            work_label TEXT NOT NULL DEFAULT '',
-            presence_visible INTEGER NOT NULL DEFAULT 0,
-            presence_terms_accepted_at TEXT,
-            emergency_name TEXT NOT NULL DEFAULT '',
-            emergency_phone TEXT NOT NULL DEFAULT '',
-            map_style TEXT NOT NULL DEFAULT 'auto',
-            map_accent TEXT NOT NULL DEFAULT 'violet',
-            avoid_ferries INTEGER NOT NULL DEFAULT 0,
-            avoid_tolls INTEGER NOT NULL DEFAULT 0,
-            avoid_unpaved INTEGER NOT NULL DEFAULT 0
-        );
+    """Create/upgrade the PostgreSQL schema without destructive migrations."""
+    db = connect_db()
+    try:
+        db.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('user','admin')),
+                locale TEXT NOT NULL DEFAULT 'pt-BR',
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                last_login_at TEXT,
+                google_sub TEXT,
+                avatar_url TEXT NOT NULL DEFAULT '',
+                auth_provider TEXT NOT NULL DEFAULT 'password',
+                age INTEGER,
+                sex TEXT NOT NULL DEFAULT '',
+                is_app_driver INTEGER,
+                night_safety_mode INTEGER NOT NULL DEFAULT 1,
+                route_preference TEXT NOT NULL DEFAULT 'balanced',
+                onboarding_completed_at TEXT,
+                distance_unit TEXT NOT NULL DEFAULT 'km',
+                vehicle_make TEXT NOT NULL DEFAULT '',
+                vehicle_model TEXT NOT NULL DEFAULT '',
+                vehicle_plate TEXT NOT NULL DEFAULT '',
+                vehicle_year TEXT NOT NULL DEFAULT '',
+                preferred_fuel_networks TEXT NOT NULL DEFAULT '[]',
+                home_label TEXT NOT NULL DEFAULT '',
+                work_label TEXT NOT NULL DEFAULT '',
+                presence_visible INTEGER NOT NULL DEFAULT 0,
+                presence_terms_accepted_at TEXT,
+                emergency_name TEXT NOT NULL DEFAULT '',
+                emergency_phone TEXT NOT NULL DEFAULT '',
+                map_style TEXT NOT NULL DEFAULT 'auto',
+                map_accent TEXT NOT NULL DEFAULT 'violet',
+                avoid_ferries INTEGER NOT NULL DEFAULT 0,
+                avoid_tolls INTEGER NOT NULL DEFAULT 0,
+                avoid_unpaved INTEGER NOT NULL DEFAULT 0
+            );
 
-        CREATE TABLE IF NOT EXISTS auth_sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            token_hash TEXT NOT NULL UNIQUE,
-            user_id INTEGER NOT NULL,
-            created_at TEXT NOT NULL,
-            last_used_at TEXT NOT NULL,
-            expires_at TEXT NOT NULL,
-            revoked_at TEXT,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
+            CREATE TABLE IF NOT EXISTS auth_sessions (
+                id SERIAL PRIMARY KEY,
+                token_hash TEXT NOT NULL UNIQUE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                created_at TEXT NOT NULL,
+                last_used_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                revoked_at TEXT
+            );
 
-        CREATE TABLE IF NOT EXISTS reports (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            category TEXT NOT NULL,
-            title TEXT NOT NULL,
-            description TEXT NOT NULL DEFAULT '',
-            severity INTEGER NOT NULL DEFAULT 3 CHECK(severity BETWEEN 1 AND 5),
-            latitude REAL NOT NULL,
-            longitude REAL NOT NULL,
-            address TEXT NOT NULL DEFAULT '',
-            status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','resolved','rejected')),
-            created_at TEXT NOT NULL,
-            expires_at TEXT,
-            confirmations INTEGER NOT NULL DEFAULT 0,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
+            CREATE TABLE IF NOT EXISTS reports (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                category TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                severity INTEGER NOT NULL DEFAULT 3 CHECK(severity BETWEEN 1 AND 5),
+                latitude REAL NOT NULL,
+                longitude REAL NOT NULL,
+                address TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','resolved','rejected')),
+                created_at TEXT NOT NULL,
+                expires_at TEXT,
+                confirmations INTEGER NOT NULL DEFAULT 0
+            );
 
-        CREATE TABLE IF NOT EXISTS report_confirmations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            report_id INTEGER NOT NULL,
-            user_id INTEGER NOT NULL,
-            created_at TEXT NOT NULL,
-            UNIQUE(report_id, user_id),
-            FOREIGN KEY(report_id) REFERENCES reports(id) ON DELETE CASCADE,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
+            CREATE TABLE IF NOT EXISTS report_confirmations (
+                id SERIAL PRIMARY KEY,
+                report_id INTEGER NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                created_at TEXT NOT NULL,
+                UNIQUE(report_id, user_id)
+            );
 
-        CREATE TABLE IF NOT EXISTS route_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            origin_label TEXT NOT NULL DEFAULT '',
-            destination_label TEXT NOT NULL DEFAULT '',
-            origin_lat REAL NOT NULL,
-            origin_lon REAL NOT NULL,
-            destination_lat REAL NOT NULL,
-            destination_lon REAL NOT NULL,
-            mode TEXT NOT NULL,
-            distance_m REAL NOT NULL,
-            duration_s REAL NOT NULL,
-            safety_score REAL NOT NULL,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
-        );
+            CREATE TABLE IF NOT EXISTS route_history (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                origin_label TEXT NOT NULL DEFAULT '',
+                destination_label TEXT NOT NULL DEFAULT '',
+                origin_lat REAL NOT NULL,
+                origin_lon REAL NOT NULL,
+                destination_lat REAL NOT NULL,
+                destination_lon REAL NOT NULL,
+                mode TEXT NOT NULL,
+                distance_m REAL NOT NULL,
+                duration_s REAL NOT NULL,
+                safety_score REAL NOT NULL,
+                created_at TEXT NOT NULL
+            );
 
-        CREATE TABLE IF NOT EXISTS route_feedback (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            route_signature TEXT NOT NULL DEFAULT '',
-            rating TEXT NOT NULL CHECK(rating IN ('good','improve')),
-            mode TEXT NOT NULL DEFAULT 'safest',
-            profile TEXT NOT NULL DEFAULT 'walking',
-            progress REAL NOT NULL DEFAULT 0,
-            duration_s REAL NOT NULL DEFAULT 0,
-            distance_m REAL NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
-        );
+            CREATE TABLE IF NOT EXISTS route_feedback (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                route_signature TEXT NOT NULL DEFAULT '',
+                rating TEXT NOT NULL CHECK(rating IN ('good','improve')),
+                mode TEXT NOT NULL DEFAULT 'safest',
+                profile TEXT NOT NULL DEFAULT 'walking',
+                progress REAL NOT NULL DEFAULT 0,
+                duration_s REAL NOT NULL DEFAULT 0,
+                distance_m REAL NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL
+            );
 
-        CREATE TABLE IF NOT EXISTS geocode_cache (
-            cache_key TEXT PRIMARY KEY,
-            payload TEXT NOT NULL,
-            created_at TEXT NOT NULL
-        );
+            CREATE TABLE IF NOT EXISTS geocode_cache (
+                cache_key TEXT PRIMARY KEY,
+                payload TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
 
-        CREATE TABLE IF NOT EXISTS audit_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            action TEXT NOT NULL,
-            metadata TEXT NOT NULL DEFAULT '{}',
-            created_at TEXT NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
-        );
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                action TEXT NOT NULL,
+                metadata TEXT NOT NULL DEFAULT '{}',
+                created_at TEXT NOT NULL
+            );
 
-        CREATE TABLE IF NOT EXISTS risk_zones (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            risk_type TEXT NOT NULL DEFAULT 'verified_incident_area',
-            latitude REAL NOT NULL,
-            longitude REAL NOT NULL,
-            radius_m REAL NOT NULL DEFAULT 350,
-            level_cap INTEGER NOT NULL DEFAULT 3 CHECK(level_cap BETWEEN 0 AND 5),
-            confidence REAL NOT NULL DEFAULT 0.75 CHECK(confidence BETWEEN 0 AND 1),
-            source TEXT NOT NULL DEFAULT 'admin',
-            source_url TEXT NOT NULL DEFAULT '',
-            start_hour INTEGER,
-            end_hour INTEGER,
-            neighborhood TEXT NOT NULL DEFAULT '',
-            city TEXT NOT NULL DEFAULT '',
-            state TEXT NOT NULL DEFAULT '',
-            danger_level INTEGER NOT NULL DEFAULT 2 CHECK(danger_level BETWEEN 1 AND 5),
-            block_routes INTEGER NOT NULL DEFAULT 0,
-            active INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
+            CREATE TABLE IF NOT EXISTS risk_zones (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                risk_type TEXT NOT NULL DEFAULT 'verified_incident_area',
+                latitude REAL NOT NULL,
+                longitude REAL NOT NULL,
+                radius_m REAL NOT NULL DEFAULT 350,
+                level_cap INTEGER NOT NULL DEFAULT 3 CHECK(level_cap BETWEEN 0 AND 5),
+                confidence REAL NOT NULL DEFAULT 0.75 CHECK(confidence BETWEEN 0 AND 1),
+                source TEXT NOT NULL DEFAULT 'admin',
+                source_url TEXT NOT NULL DEFAULT '',
+                start_hour INTEGER,
+                end_hour INTEGER,
+                neighborhood TEXT NOT NULL DEFAULT '',
+                city TEXT NOT NULL DEFAULT '',
+                state TEXT NOT NULL DEFAULT '',
+                danger_level INTEGER NOT NULL DEFAULT 2 CHECK(danger_level BETWEEN 1 AND 5),
+                block_routes INTEGER NOT NULL DEFAULT 0,
+                active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
 
-        CREATE TABLE IF NOT EXISTS shared_routes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            token TEXT NOT NULL UNIQUE,
-            creator_user_id INTEGER,
-            origin_label TEXT NOT NULL DEFAULT '',
-            destination_label TEXT NOT NULL DEFAULT '',
-            origin_lat REAL NOT NULL,
-            origin_lon REAL NOT NULL,
-            destination_lat REAL NOT NULL,
-            destination_lon REAL NOT NULL,
-            profile TEXT NOT NULL DEFAULT 'walking',
-            mode TEXT NOT NULL DEFAULT 'safest',
-            route_json TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            expires_at TEXT NOT NULL,
-            uses_count INTEGER NOT NULL DEFAULT 0,
-            FOREIGN KEY(creator_user_id) REFERENCES users(id) ON DELETE SET NULL
-        );
+            CREATE TABLE IF NOT EXISTS shared_routes (
+                id SERIAL PRIMARY KEY,
+                token TEXT NOT NULL UNIQUE,
+                creator_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                origin_label TEXT NOT NULL DEFAULT '',
+                destination_label TEXT NOT NULL DEFAULT '',
+                origin_lat REAL NOT NULL,
+                origin_lon REAL NOT NULL,
+                destination_lat REAL NOT NULL,
+                destination_lon REAL NOT NULL,
+                profile TEXT NOT NULL DEFAULT 'walking',
+                mode TEXT NOT NULL DEFAULT 'safest',
+                route_json TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                uses_count INTEGER NOT NULL DEFAULT 0
+            );
 
-        CREATE TABLE IF NOT EXISTS live_trips (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            token TEXT NOT NULL UNIQUE,
-            creator_user_id INTEGER NOT NULL,
-            destination_label TEXT NOT NULL DEFAULT '',
-            last_lat REAL,
-            last_lon REAL,
-            last_accuracy REAL,
-            last_speed REAL,
-            last_heading REAL,
-            route_progress REAL NOT NULL DEFAULT 0,
-            safety_level INTEGER NOT NULL DEFAULT 3,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            expires_at TEXT NOT NULL,
-            active INTEGER NOT NULL DEFAULT 1,
-            FOREIGN KEY(creator_user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
+            CREATE TABLE IF NOT EXISTS live_trips (
+                id SERIAL PRIMARY KEY,
+                token TEXT NOT NULL UNIQUE,
+                creator_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                destination_label TEXT NOT NULL DEFAULT '',
+                last_lat REAL,
+                last_lon REAL,
+                last_accuracy REAL,
+                last_speed REAL,
+                last_heading REAL,
+                route_progress REAL NOT NULL DEFAULT 0,
+                safety_level INTEGER NOT NULL DEFAULT 3,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                active INTEGER NOT NULL DEFAULT 1
+            );
 
-        -- Spark Live Flow: amostras efêmeras e anonimizadas de velocidade.
-        -- Não guarda user_id nem coordenada GPS exata; somente uma célula urbana
-        -- arredondada e um identificador efêmero derivado da sessão.
-        CREATE TABLE IF NOT EXISTS flow_samples (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            cell_lat REAL NOT NULL,
-            cell_lon REAL NOT NULL,
-            direction_bucket INTEGER NOT NULL DEFAULT 0,
-            speed_kmh REAL NOT NULL,
-            source_hash TEXT NOT NULL,
-            created_at TEXT NOT NULL
-        );
+            CREATE TABLE IF NOT EXISTS flow_samples (
+                id SERIAL PRIMARY KEY,
+                cell_lat REAL NOT NULL,
+                cell_lon REAL NOT NULL,
+                direction_bucket INTEGER NOT NULL DEFAULT 0,
+                speed_kmh REAL NOT NULL,
+                source_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
 
-        -- Presença aproximada e opt-in. Guardamos somente coordenadas quantizadas
-        -- para não expor GPS exato de usuários próximos.
-        CREATE TABLE IF NOT EXISTS nearby_presence (
-            user_id INTEGER PRIMARY KEY,
-            cell_lat REAL NOT NULL,
-            cell_lon REAL NOT NULL,
-            updated_at TEXT NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
+            CREATE TABLE IF NOT EXISTS nearby_presence (
+                user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                cell_lat REAL NOT NULL,
+                cell_lon REAL NOT NULL,
+                updated_at TEXT NOT NULL
+            );
 
-        -- Vínculos de confiança são criados somente por convite explícito.
-        CREATE TABLE IF NOT EXISTS trusted_links (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            owner_user_id INTEGER NOT NULL,
-            trusted_user_id INTEGER NOT NULL,
-            relation TEXT NOT NULL DEFAULT 'responsavel',
-            created_at TEXT NOT NULL,
-            UNIQUE(owner_user_id, trusted_user_id),
-            FOREIGN KEY(owner_user_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY(trusted_user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
+            CREATE TABLE IF NOT EXISTS trusted_links (
+                id SERIAL PRIMARY KEY,
+                owner_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                trusted_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                relation TEXT NOT NULL DEFAULT 'responsavel',
+                created_at TEXT NOT NULL,
+                UNIQUE(owner_user_id, trusted_user_id)
+            );
 
-        CREATE TABLE IF NOT EXISTS family_invites (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            token TEXT NOT NULL UNIQUE,
-            inviter_user_id INTEGER NOT NULL,
-            relation TEXT NOT NULL DEFAULT 'responsavel',
-            created_at TEXT NOT NULL,
-            expires_at TEXT NOT NULL,
-            accepted_at TEXT,
-            accepted_by_user_id INTEGER,
-            FOREIGN KEY(inviter_user_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY(accepted_by_user_id) REFERENCES users(id) ON DELETE SET NULL
-        );
+            CREATE TABLE IF NOT EXISTS family_invites (
+                id SERIAL PRIMARY KEY,
+                token TEXT NOT NULL UNIQUE,
+                inviter_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                relation TEXT NOT NULL DEFAULT 'responsavel',
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                accepted_at TEXT,
+                accepted_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
+            );
 
-        CREATE TABLE IF NOT EXISTS app_notifications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            source_user_id INTEGER,
-            kind TEXT NOT NULL DEFAULT 'info',
-            title TEXT NOT NULL,
-            body TEXT NOT NULL DEFAULT '',
-            payload_json TEXT NOT NULL DEFAULT '{}',
-            created_at TEXT NOT NULL,
-            read_at TEXT,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY(source_user_id) REFERENCES users(id) ON DELETE SET NULL
-        );
+            CREATE TABLE IF NOT EXISTS app_notifications (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                source_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                kind TEXT NOT NULL DEFAULT 'info',
+                title TEXT NOT NULL,
+                body TEXT NOT NULL DEFAULT '',
+                payload_json TEXT NOT NULL DEFAULT '{}',
+                created_at TEXT NOT NULL,
+                read_at TEXT
+            );
 
-        -- OAuth state is persisted server-side because the app can run inside
-        -- a third-party iframe. Partitioned browser cookies may not survive the
-        -- top-level Google redirect on every mobile browser/WebView.
-        CREATE TABLE IF NOT EXISTS oauth_states (
-            state TEXT PRIMARY KEY,
-            redirect_uri TEXT NOT NULL,
-            next_url TEXT,
-            fingerprint TEXT NOT NULL DEFAULT '',
-            created_at TEXT NOT NULL,
-            expires_at TEXT NOT NULL
-        );
+            CREATE TABLE IF NOT EXISTS oauth_states (
+                state TEXT PRIMARY KEY,
+                redirect_uri TEXT NOT NULL,
+                next_url TEXT,
+                fingerprint TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL
+            );
 
-        CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id, expires_at);
-        CREATE INDEX IF NOT EXISTS idx_auth_sessions_expiry ON auth_sessions(expires_at, revoked_at);
-        CREATE INDEX IF NOT EXISTS idx_reports_status_created ON reports(status, created_at);
-        CREATE INDEX IF NOT EXISTS idx_reports_geo ON reports(latitude, longitude);
-        CREATE INDEX IF NOT EXISTS idx_routes_user_created ON route_history(user_id, created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_route_feedback_created ON route_feedback(created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_route_feedback_user ON route_feedback(user_id, created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_risk_zones_geo ON risk_zones(active, latitude, longitude);
-        CREATE INDEX IF NOT EXISTS idx_shared_routes_token ON shared_routes(token);
-        CREATE INDEX IF NOT EXISTS idx_shared_routes_expiry ON shared_routes(expires_at);
-        CREATE INDEX IF NOT EXISTS idx_live_trips_token ON live_trips(token);
-        CREATE INDEX IF NOT EXISTS idx_live_trips_expiry ON live_trips(expires_at, active);
-        CREATE INDEX IF NOT EXISTS idx_oauth_states_expiry ON oauth_states(expires_at);
-        CREATE INDEX IF NOT EXISTS idx_flow_samples_geo_time ON flow_samples(cell_lat, cell_lon, created_at);
-        CREATE INDEX IF NOT EXISTS idx_flow_samples_time ON flow_samples(created_at);
-        CREATE INDEX IF NOT EXISTS idx_nearby_presence_time ON nearby_presence(updated_at);
-        CREATE INDEX IF NOT EXISTS idx_trusted_links_owner ON trusted_links(owner_user_id);
-        CREATE INDEX IF NOT EXISTS idx_trusted_links_trusted ON trusted_links(trusted_user_id);
-        CREATE INDEX IF NOT EXISTS idx_family_invites_expiry ON family_invites(expires_at);
-        CREATE INDEX IF NOT EXISTS idx_app_notifications_user ON app_notifications(user_id, created_at DESC);
-        """
-    )
-
-    # Migração leve para bancos SQLite criados por versões anteriores do WeSafe.
-    user_columns = {row[1] for row in db.execute("PRAGMA table_info(users)").fetchall()}
-    if "google_sub" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN google_sub TEXT")
-    if "avatar_url" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT NOT NULL DEFAULT ''")
-    if "auth_provider" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN auth_provider TEXT NOT NULL DEFAULT 'password'")
-    if "age" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN age INTEGER")
-    if "sex" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN sex TEXT NOT NULL DEFAULT ''")
-    if "is_app_driver" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN is_app_driver INTEGER")
-    if "night_safety_mode" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN night_safety_mode INTEGER NOT NULL DEFAULT 1")
-    if "route_preference" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN route_preference TEXT NOT NULL DEFAULT 'balanced'")
-    if "onboarding_completed_at" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN onboarding_completed_at TEXT")
-    if "distance_unit" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN distance_unit TEXT NOT NULL DEFAULT 'km'")
-    if "vehicle_make" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN vehicle_make TEXT NOT NULL DEFAULT ''")
-    if "vehicle_model" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN vehicle_model TEXT NOT NULL DEFAULT ''")
-    if "vehicle_plate" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN vehicle_plate TEXT NOT NULL DEFAULT ''")
-    if "vehicle_year" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN vehicle_year TEXT NOT NULL DEFAULT ''")
-    if "preferred_fuel_networks" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN preferred_fuel_networks TEXT NOT NULL DEFAULT '[]'")
-    if "home_label" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN home_label TEXT NOT NULL DEFAULT ''")
-    if "work_label" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN work_label TEXT NOT NULL DEFAULT ''")
-    if "presence_visible" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN presence_visible INTEGER NOT NULL DEFAULT 0")
-    if "presence_terms_accepted_at" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN presence_terms_accepted_at TEXT")
-    if "emergency_name" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN emergency_name TEXT NOT NULL DEFAULT ''")
-    if "emergency_phone" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN emergency_phone TEXT NOT NULL DEFAULT ''")
-    if "map_style" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN map_style TEXT NOT NULL DEFAULT 'auto'")
-    if "map_accent" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN map_accent TEXT NOT NULL DEFAULT 'violet'")
-    if "avoid_ferries" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN avoid_ferries INTEGER NOT NULL DEFAULT 0")
-    if "avoid_tolls" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN avoid_tolls INTEGER NOT NULL DEFAULT 0")
-    if "avoid_unpaved" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN avoid_unpaved INTEGER NOT NULL DEFAULT 0")
-    db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL")
-
-    # V81 — risk-zone controls stay additive for existing SQLite databases.
-    risk_columns = {row[1] for row in db.execute("PRAGMA table_info(risk_zones)").fetchall()}
-    if "neighborhood" not in risk_columns:
-        db.execute("ALTER TABLE risk_zones ADD COLUMN neighborhood TEXT NOT NULL DEFAULT ''")
-    if "city" not in risk_columns:
-        db.execute("ALTER TABLE risk_zones ADD COLUMN city TEXT NOT NULL DEFAULT ''")
-    if "state" not in risk_columns:
-        db.execute("ALTER TABLE risk_zones ADD COLUMN state TEXT NOT NULL DEFAULT ''")
-    if "danger_level" not in risk_columns:
-        db.execute("ALTER TABLE risk_zones ADD COLUMN danger_level INTEGER NOT NULL DEFAULT 2")
-        db.execute("UPDATE risk_zones SET danger_level=MAX(1, MIN(5, 5-level_cap))")
-    if "block_routes" not in risk_columns:
-        db.execute("ALTER TABLE risk_zones ADD COLUMN block_routes INTEGER NOT NULL DEFAULT 0")
-    db.execute("CREATE INDEX IF NOT EXISTS idx_risk_zones_block ON risk_zones(active, block_routes, latitude, longitude)")
-
-    oauth_columns = {row[1] for row in db.execute("PRAGMA table_info(oauth_states)").fetchall()}
-    if "fingerprint" not in oauth_columns:
-        db.execute("ALTER TABLE oauth_states ADD COLUMN fingerprint TEXT NOT NULL DEFAULT ''")
-
-    admin_email = os.environ.get("WESAFE_ADMIN_EMAIL", "admin@wesafe.local").strip().lower()
-    admin_password_env = os.environ.get("WESAFE_ADMIN_PASSWORD", "").strip()
-    admin_password = admin_password_env or "WeSafe@2026!"
-    existing = db.execute("SELECT id FROM users WHERE email = ?", (admin_email,)).fetchone()
-    if not existing:
-        db.execute(
-            "INSERT INTO users(name,email,password_hash,role,locale,created_at) VALUES(?,?,?,?,?,?)",
-            ("Administrador WeSafe", admin_email, hash_password(admin_password), "admin", "pt-BR", utcnow_iso()),
+            CREATE INDEX IF NOT EXISTS idx_auth_sessions_user ON auth_sessions(user_id, expires_at);
+            CREATE INDEX IF NOT EXISTS idx_auth_sessions_expiry ON auth_sessions(expires_at, revoked_at);
+            CREATE INDEX IF NOT EXISTS idx_reports_status_created ON reports(status, created_at);
+            CREATE INDEX IF NOT EXISTS idx_reports_geo ON reports(latitude, longitude);
+            CREATE INDEX IF NOT EXISTS idx_routes_user_created ON route_history(user_id, created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_route_feedback_created ON route_feedback(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_route_feedback_user ON route_feedback(user_id, created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_risk_zones_geo ON risk_zones(active, latitude, longitude);
+            CREATE INDEX IF NOT EXISTS idx_shared_routes_token ON shared_routes(token);
+            CREATE INDEX IF NOT EXISTS idx_shared_routes_expiry ON shared_routes(expires_at);
+            CREATE INDEX IF NOT EXISTS idx_live_trips_token ON live_trips(token);
+            CREATE INDEX IF NOT EXISTS idx_live_trips_expiry ON live_trips(expires_at, active);
+            CREATE INDEX IF NOT EXISTS idx_oauth_states_expiry ON oauth_states(expires_at);
+            CREATE INDEX IF NOT EXISTS idx_flow_samples_geo_time ON flow_samples(cell_lat, cell_lon, created_at);
+            CREATE INDEX IF NOT EXISTS idx_flow_samples_time ON flow_samples(created_at);
+            CREATE INDEX IF NOT EXISTS idx_nearby_presence_time ON nearby_presence(updated_at);
+            CREATE INDEX IF NOT EXISTS idx_trusted_links_owner ON trusted_links(owner_user_id);
+            CREATE INDEX IF NOT EXISTS idx_trusted_links_trusted ON trusted_links(trusted_user_id);
+            CREATE INDEX IF NOT EXISTS idx_family_invites_expiry ON family_invites(expires_at);
+            CREATE INDEX IF NOT EXISTS idx_app_notifications_user ON app_notifications(user_id, created_at DESC);
+            """
         )
-    elif admin_password_env:
-        # Em produção, a senha definida no ambiente substitui a senha do banco entregue no ZIP.
-        db.execute("UPDATE users SET password_hash=?, role='admin' WHERE id=?", (hash_password(admin_password_env), existing["id"] if hasattr(existing, "keys") else existing[0]))
 
-    # Conta proprietária do projeto: quando o e-mail existir (ou entrar via Google),
-    # deve ser administrador. Criamos uma linha sem senha utilizável para permitir
-    # o vínculo seguro pelo login Google sem embutir credenciais conhecidas no ZIP.
-    owner_email = os.environ.get("SPARK_OWNER_EMAIL", "miguelpinxs@gmail.com").strip().lower()
-    owner = db.execute("SELECT id FROM users WHERE email=?", (owner_email,)).fetchone()
-    if owner:
-        db.execute("UPDATE users SET role='admin', is_active=1 WHERE id=?", (owner["id"] if hasattr(owner, "keys") else owner[0],))
-    else:
-        db.execute(
-            "INSERT INTO users(name,email,password_hash,role,locale,created_at,auth_provider) VALUES(?,?,?,?,?,?,?)",
-            ("Miguel", owner_email, f"google_only${secrets.token_hex(32)}", "admin", "pt-BR", utcnow_iso(), "password"),
-        )
-    db.commit()
-    db.close()
+        # Additive migrations for existing PostgreSQL databases.
+        user_columns = table_columns(db, "users")
+        user_migrations = {
+            "google_sub": "ALTER TABLE users ADD COLUMN google_sub TEXT",
+            "avatar_url": "ALTER TABLE users ADD COLUMN avatar_url TEXT NOT NULL DEFAULT ''",
+            "auth_provider": "ALTER TABLE users ADD COLUMN auth_provider TEXT NOT NULL DEFAULT 'password'",
+            "age": "ALTER TABLE users ADD COLUMN age INTEGER",
+            "sex": "ALTER TABLE users ADD COLUMN sex TEXT NOT NULL DEFAULT ''",
+            "is_app_driver": "ALTER TABLE users ADD COLUMN is_app_driver INTEGER",
+            "night_safety_mode": "ALTER TABLE users ADD COLUMN night_safety_mode INTEGER NOT NULL DEFAULT 1",
+            "route_preference": "ALTER TABLE users ADD COLUMN route_preference TEXT NOT NULL DEFAULT 'balanced'",
+            "onboarding_completed_at": "ALTER TABLE users ADD COLUMN onboarding_completed_at TEXT",
+            "distance_unit": "ALTER TABLE users ADD COLUMN distance_unit TEXT NOT NULL DEFAULT 'km'",
+            "vehicle_make": "ALTER TABLE users ADD COLUMN vehicle_make TEXT NOT NULL DEFAULT ''",
+            "vehicle_model": "ALTER TABLE users ADD COLUMN vehicle_model TEXT NOT NULL DEFAULT ''",
+            "vehicle_plate": "ALTER TABLE users ADD COLUMN vehicle_plate TEXT NOT NULL DEFAULT ''",
+            "vehicle_year": "ALTER TABLE users ADD COLUMN vehicle_year TEXT NOT NULL DEFAULT ''",
+            "preferred_fuel_networks": "ALTER TABLE users ADD COLUMN preferred_fuel_networks TEXT NOT NULL DEFAULT '[]'",
+            "home_label": "ALTER TABLE users ADD COLUMN home_label TEXT NOT NULL DEFAULT ''",
+            "work_label": "ALTER TABLE users ADD COLUMN work_label TEXT NOT NULL DEFAULT ''",
+            "presence_visible": "ALTER TABLE users ADD COLUMN presence_visible INTEGER NOT NULL DEFAULT 0",
+            "presence_terms_accepted_at": "ALTER TABLE users ADD COLUMN presence_terms_accepted_at TEXT",
+            "emergency_name": "ALTER TABLE users ADD COLUMN emergency_name TEXT NOT NULL DEFAULT ''",
+            "emergency_phone": "ALTER TABLE users ADD COLUMN emergency_phone TEXT NOT NULL DEFAULT ''",
+            "map_style": "ALTER TABLE users ADD COLUMN map_style TEXT NOT NULL DEFAULT 'auto'",
+            "map_accent": "ALTER TABLE users ADD COLUMN map_accent TEXT NOT NULL DEFAULT 'violet'",
+            "avoid_ferries": "ALTER TABLE users ADD COLUMN avoid_ferries INTEGER NOT NULL DEFAULT 0",
+            "avoid_tolls": "ALTER TABLE users ADD COLUMN avoid_tolls INTEGER NOT NULL DEFAULT 0",
+            "avoid_unpaved": "ALTER TABLE users ADD COLUMN avoid_unpaved INTEGER NOT NULL DEFAULT 0",
+        }
+        for column, ddl in user_migrations.items():
+            if column not in user_columns:
+                db.execute(ddl)
+        db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL")
+
+        risk_columns = table_columns(db, "risk_zones")
+        risk_migrations = {
+            "neighborhood": "ALTER TABLE risk_zones ADD COLUMN neighborhood TEXT NOT NULL DEFAULT ''",
+            "city": "ALTER TABLE risk_zones ADD COLUMN city TEXT NOT NULL DEFAULT ''",
+            "state": "ALTER TABLE risk_zones ADD COLUMN state TEXT NOT NULL DEFAULT ''",
+            "danger_level": "ALTER TABLE risk_zones ADD COLUMN danger_level INTEGER NOT NULL DEFAULT 2",
+            "block_routes": "ALTER TABLE risk_zones ADD COLUMN block_routes INTEGER NOT NULL DEFAULT 0",
+        }
+        danger_was_missing = "danger_level" not in risk_columns
+        for column, ddl in risk_migrations.items():
+            if column not in risk_columns:
+                db.execute(ddl)
+        if danger_was_missing:
+            db.execute("UPDATE risk_zones SET danger_level=GREATEST(1, LEAST(5, 5-level_cap))")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_risk_zones_block ON risk_zones(active, block_routes, latitude, longitude)")
+
+        oauth_columns = table_columns(db, "oauth_states")
+        if "fingerprint" not in oauth_columns:
+            db.execute("ALTER TABLE oauth_states ADD COLUMN fingerprint TEXT NOT NULL DEFAULT ''")
+
+        admin_email = os.environ.get("WESAFE_ADMIN_EMAIL", "admin@wesafe.local").strip().lower()
+        admin_password_env = os.environ.get("WESAFE_ADMIN_PASSWORD", "").strip()
+        admin_password = admin_password_env or "WeSafe@2026!"
+        existing = db.execute("SELECT id FROM users WHERE email = ?", (admin_email,)).fetchone()
+        if not existing:
+            db.execute(
+                "INSERT INTO users(name,email,password_hash,role,locale,created_at) VALUES(?,?,?,?,?,?)",
+                ("Administrador WeSafe", admin_email, hash_password(admin_password), "admin", "pt-BR", utcnow_iso()),
+            )
+        elif admin_password_env:
+            db.execute("UPDATE users SET password_hash=?, role='admin' WHERE id=?", (hash_password(admin_password_env), existing["id"]))
+
+        owner_email = os.environ.get("SPARK_OWNER_EMAIL", "miguelpinxs@gmail.com").strip().lower()
+        owner = db.execute("SELECT id FROM users WHERE email=?", (owner_email,)).fetchone()
+        if owner:
+            db.execute("UPDATE users SET role='admin', is_active=1 WHERE id=?", (owner["id"],))
+        else:
+            db.execute(
+                "INSERT INTO users(name,email,password_hash,role,locale,created_at,auth_provider) VALUES(?,?,?,?,?,?,?)",
+                ("Miguel", owner_email, f"google_only${secrets.token_hex(32)}", "admin", "pt-BR", utcnow_iso(), "password"),
+            )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
 
 init_db()
@@ -1075,7 +1020,14 @@ def persist_google_oauth_state(state, redirect_uri, next_url=None):
     db = get_db()
     db.execute("DELETE FROM oauth_states WHERE expires_at < ?", (created,))
     db.execute(
-        "INSERT OR REPLACE INTO oauth_states(state,redirect_uri,next_url,fingerprint,created_at,expires_at) VALUES(?,?,?,?,?,?)",
+        """INSERT INTO oauth_states(state,redirect_uri,next_url,fingerprint,created_at,expires_at)
+           VALUES(?,?,?,?,?,?)
+           ON CONFLICT(state) DO UPDATE SET
+             redirect_uri=EXCLUDED.redirect_uri,
+             next_url=EXCLUDED.next_url,
+             fingerprint=EXCLUDED.fingerprint,
+             created_at=EXCLUDED.created_at,
+             expires_at=EXCLUDED.expires_at""",
         (state, redirect_uri, safe_next_url(next_url), oauth_client_fingerprint(), created, expires),
     )
     db.commit()
@@ -4404,7 +4356,7 @@ def healthz():
     """Render readiness check without calling third-party services.
 
     The previous health check returned 200 even while `/` crashed because a
-    critical helper was missing. This now validates SQLite, the home template
+    critical helper was missing. This now validates PostgreSQL, the home template
     and provider configuration helpers so Render can reject a broken deploy.
     """
     try:
@@ -4570,7 +4522,8 @@ def register():
                 (name, email, hash_password(password), role_for_email(email), locale, utcnow_iso()),
             )
             db.commit()
-        except sqlite3.IntegrityError:
+        except IntegrityError:
+            db.rollback()
             flash("Já existe uma conta com este e-mail.", "danger")
             return render_template("register.html"), 409
 
@@ -4957,7 +4910,8 @@ def confirm_report(report_id):
         db.execute("UPDATE reports SET confirmations=confirmations+1 WHERE id=?", (report_id,))
         db.commit()
         flash("Alerta confirmado.", "success")
-    except sqlite3.IntegrityError:
+    except IntegrityError:
+        db.rollback()
         flash("Você já confirmou este alerta.", "info")
     return redirect(url_for("alerts_page"))
 
@@ -5091,7 +5045,8 @@ def family_invite(token):
             return redirect(request.path)
         now = utcnow_iso()
         db.execute(
-            "INSERT OR IGNORE INTO trusted_links(owner_user_id,trusted_user_id,relation,created_at) VALUES(?,?,?,?)",
+            """INSERT INTO trusted_links(owner_user_id,trusted_user_id,relation,created_at)
+               VALUES(?,?,?,?) ON CONFLICT(owner_user_id,trusted_user_id) DO NOTHING""",
             (invite["inviter_user_id"], user["id"], invite["relation"] or "responsavel", now),
         )
         db.execute(
@@ -6786,7 +6741,7 @@ def server_error(_e):
 @app.cli.command("init-db")
 def init_db_command():
     init_db()
-    print(f"Banco inicializado em {DB_PATH}")
+    print("Banco PostgreSQL inicializado/atualizado com sucesso.")
 
 
 def _acquire_keepalive_leader():
