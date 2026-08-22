@@ -459,13 +459,12 @@ def init_db():
             source_url TEXT NOT NULL DEFAULT '',
             start_hour INTEGER,
             end_hour INTEGER,
-            active INTEGER NOT NULL DEFAULT 1,
-            area_kind TEXT NOT NULL DEFAULT 'zone',
+            neighborhood TEXT NOT NULL DEFAULT '',
             city TEXT NOT NULL DEFAULT '',
             state TEXT NOT NULL DEFAULT '',
-            query_label TEXT NOT NULL DEFAULT '',
-            block_routing INTEGER NOT NULL DEFAULT 0,
-            admin_risk_level INTEGER NOT NULL DEFAULT 3,
+            danger_level INTEGER NOT NULL DEFAULT 2 CHECK(danger_level BETWEEN 1 AND 5),
+            block_routes INTEGER NOT NULL DEFAULT 0,
+            active INTEGER NOT NULL DEFAULT 1,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -659,22 +658,22 @@ def init_db():
         db.execute("ALTER TABLE users ADD COLUMN avoid_tolls INTEGER NOT NULL DEFAULT 0")
     if "avoid_unpaved" not in user_columns:
         db.execute("ALTER TABLE users ADD COLUMN avoid_unpaved INTEGER NOT NULL DEFAULT 0")
+    db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL")
 
-    # V81 — controles administrativos de bairros/áreas. Migração apenas aditiva.
+    # V81 — risk-zone controls stay additive for existing SQLite databases.
     risk_columns = {row[1] for row in db.execute("PRAGMA table_info(risk_zones)").fetchall()}
-    if "area_kind" not in risk_columns:
-        db.execute("ALTER TABLE risk_zones ADD COLUMN area_kind TEXT NOT NULL DEFAULT 'zone'")
+    if "neighborhood" not in risk_columns:
+        db.execute("ALTER TABLE risk_zones ADD COLUMN neighborhood TEXT NOT NULL DEFAULT ''")
     if "city" not in risk_columns:
         db.execute("ALTER TABLE risk_zones ADD COLUMN city TEXT NOT NULL DEFAULT ''")
     if "state" not in risk_columns:
         db.execute("ALTER TABLE risk_zones ADD COLUMN state TEXT NOT NULL DEFAULT ''")
-    if "query_label" not in risk_columns:
-        db.execute("ALTER TABLE risk_zones ADD COLUMN query_label TEXT NOT NULL DEFAULT ''")
-    if "block_routing" not in risk_columns:
-        db.execute("ALTER TABLE risk_zones ADD COLUMN block_routing INTEGER NOT NULL DEFAULT 0")
-    if "admin_risk_level" not in risk_columns:
-        db.execute("ALTER TABLE risk_zones ADD COLUMN admin_risk_level INTEGER NOT NULL DEFAULT 3")
-    db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL")
+    if "danger_level" not in risk_columns:
+        db.execute("ALTER TABLE risk_zones ADD COLUMN danger_level INTEGER NOT NULL DEFAULT 2")
+        db.execute("UPDATE risk_zones SET danger_level=MAX(1, MIN(5, 5-level_cap))")
+    if "block_routes" not in risk_columns:
+        db.execute("ALTER TABLE risk_zones ADD COLUMN block_routes INTEGER NOT NULL DEFAULT 0")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_risk_zones_block ON risk_zones(active, block_routes, latitude, longitude)")
 
     oauth_columns = {row[1] for row in db.execute("PRAGMA table_info(oauth_states)").fetchall()}
     if "fingerprint" not in oauth_columns:
@@ -1824,108 +1823,94 @@ def professional_route_assessment(route, metrics, road):
     }
 
 
+def _candidate_bounds(routes, start_lat, start_lon, end_lat, end_lon):
+    coords = []
+    for route in (routes or [])[:20]:
+        coords.extend((route.get("geometry") or {}).get("coordinates") or [])
+    if coords:
+        lons = [float(c[0]) for c in coords if len(c) >= 2]
+        lats = [float(c[1]) for c in coords if len(c) >= 2]
+        if lons and lats:
+            pad = .018
+            return min(lats)-pad, min(lons)-pad, max(lats)+pad, max(lons)+pad
+    pad = .025
+    return min(start_lat,end_lat)-pad, min(start_lon,end_lon)-pad, max(start_lat,end_lat)+pad, max(start_lon,end_lon)+pad
+
+
+def admin_blocked_zone_points(zones, start_lat, start_lon, end_lat, end_lon, local_hour=None):
+    """Strong-avoid points explicitly configured by an administrator.
+
+    A zone containing the trip origin/destination is not hard-avoided; otherwise
+    users could be unable to leave or reach their own neighborhood. The zone still
+    participates in the Safety Engine and can lower the route's safety score.
+    """
+    out = []
+    for zone in (zones or []):
+        if not int(zone["active"] or 0) or not int(zone["block_routes"] or 0):
+            continue
+        if not zone_active_for_hour(zone, local_hour):
+            continue
+        radius = float(clamp(float(zone["radius_m"] or 700), 100, 5000))
+        zlat, zlon = float(zone["latitude"]), float(zone["longitude"])
+        if haversine_m(start_lat, start_lon, zlat, zlon) <= radius or haversine_m(end_lat, end_lon, zlat, zlon) <= radius:
+            continue
+        out.append({
+            "point": [zlon, zlat],
+            "score": 200 + int(zone["danger_level"] or 1) * 25,
+            "reason": str(zone["name"] or zone["neighborhood"] or "área evitada")[:120],
+            "kind": "admin_blocked_area",
+            "zone_id": int(zone["id"]),
+            "radius_m": radius,
+        })
+    return out[:12]
+
+
+def route_blocked_zone_hits(route, zones, start_lat, start_lon, end_lat, end_lon, local_hour=None):
+    coords = (route.get("geometry") or {}).get("coordinates") or []
+    if len(coords) < 2:
+        return []
+    hits = []
+    for zone in (zones or []):
+        if not int(zone["active"] or 0) or not int(zone["block_routes"] or 0):
+            continue
+        if not zone_active_for_hour(zone, local_hour):
+            continue
+        radius = float(clamp(float(zone["radius_m"] or 700), 100, 5000))
+        zlat, zlon = float(zone["latitude"]), float(zone["longitude"])
+        # Never hard-block the origin/destination zone.
+        if haversine_m(start_lat, start_lon, zlat, zlon) <= radius or haversine_m(end_lat, end_lon, zlat, zlon) <= radius:
+            continue
+        d = min_distance_to_geometry_m(zlat, zlon, coords)
+        if d <= radius:
+            hits.append({"id": int(zone["id"]), "name": zone["name"], "distance_to_route_m": round(d), "radius_m": round(radius)})
+    return hits
+
+
+def apply_admin_route_blocks(routes, zones, start_lat, start_lon, end_lat, end_lon, local_hour=None):
+    """Drop candidates crossing admin strong-avoid areas whenever an alternative exists."""
+    evaluated = []
+    for route in (routes or []):
+        hits = route_blocked_zone_hits(route, zones, start_lat, start_lon, end_lat, end_lon, local_hour)
+        route["_admin_block_hits"] = hits
+        evaluated.append(route)
+    clear = [r for r in evaluated if not r.get("_admin_block_hits")]
+    if clear:
+        return clear, {"enforced": True, "fallback": False, "filtered": len(evaluated)-len(clear)}
+    return evaluated, {"enforced": bool(evaluated), "fallback": bool(evaluated), "filtered": 0}
+
+
 def get_risk_zones_for_bounds(min_lat, min_lon, max_lat, max_lon):
     # Margem generosa porque cada zona tem raio próprio.
     pad = 0.05
     return get_db().execute(
         """
-        SELECT id,name,risk_type,latitude,longitude,radius_m,level_cap,confidence,source,source_url,start_hour,end_hour,active
+        SELECT id,name,risk_type,latitude,longitude,radius_m,level_cap,confidence,source,source_url,start_hour,end_hour,neighborhood,city,state,danger_level,block_routes,active
         FROM risk_zones
         WHERE active=1 AND latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?
         ORDER BY confidence DESC, id DESC
         """,
         (min_lat-pad, max_lat+pad, min_lon-pad, max_lon+pad),
     ).fetchall()
-
-
-def get_admin_area_controls_for_bounds(min_lat, min_lon, max_lat, max_lon):
-    """Return active admin-managed neighborhood/area controls near a route corridor."""
-    pad = 0.06
-    return get_db().execute(
-        """
-        SELECT id,name,latitude,longitude,radius_m,level_cap,confidence,source,source_url,
-               area_kind,city,state,query_label,block_routing,admin_risk_level,active
-        FROM risk_zones
-        WHERE active=1
-          AND area_kind='neighborhood'
-          AND latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?
-        ORDER BY block_routing DESC, confidence DESC, id DESC
-        """,
-        (min_lat-pad, max_lat+pad, min_lon-pad, max_lon+pad),
-    ).fetchall()
-
-
-def admin_area_route_context(start_lat, start_lon, end_lat, end_lon):
-    """Build strong best-effort Mapbox exclusions for admin-blocked areas.
-
-    If the trip starts or ends inside an area, that area is still scored as risky but
-    is not made a hard exclusion, otherwise the user could be unable to leave/arrive.
-    """
-    direct_km = haversine_m(start_lat, start_lon, end_lat, end_lon) / 1000.0
-    pad = max(.04, min(.20, direct_km / 750.0))
-    controls = get_admin_area_controls_for_bounds(
-        min(start_lat, end_lat)-pad, min(start_lon, end_lon)-pad,
-        max(start_lat, end_lat)+pad, max(start_lon, end_lon)+pad,
-    )
-    enriched, points, reasons = [], [], []
-    for row in controls:
-        item = dict(row)
-        radius = max(80.0, float(item.get("radius_m") or 350))
-        lat, lon = float(item["latitude"]), float(item["longitude"])
-        endpoint_inside = min(
-            haversine_m(lat, lon, start_lat, start_lon),
-            haversine_m(lat, lon, end_lat, end_lon),
-        ) <= radius * 1.05
-        item["effective_block"] = bool(item.get("block_routing")) and not endpoint_inside
-        enriched.append(item)
-        if not item["effective_block"]:
-            continue
-        # Mapbox point exclusions are best-effort. Center + a small ring makes a
-        # neighborhood-sized control more effective without exhausting the quota.
-        ring_m = min(1000.0, max(180.0, radius * .55))
-        lat_delta = ring_m / 111_320.0
-        lon_scale = max(.20, math.cos(math.radians(lat)))
-        lon_delta = ring_m / (111_320.0 * lon_scale)
-        samples = [(lon, lat)]
-        if radius >= 450:
-            samples += [(lon+lon_delta, lat), (lon-lon_delta, lat), (lon, lat+lat_delta), (lon, lat-lat_delta)]
-        for point in samples:
-            if all(haversine_m(point[1], point[0], old[1], old[0]) > 120 for old in points):
-                points.append(point)
-                if len(points) >= 18:
-                    break
-        reasons.append(f"Área administrativa evitada: {item['name']}")
-        if len(points) >= 18:
-            break
-    return enriched, points[:18], list(dict.fromkeys(reasons))[:8]
-
-
-def route_admin_area_status(route, controls):
-    coords = ((route or {}).get("geometry") or {}).get("coordinates") or []
-    if len(coords) < 2 or not controls:
-        return {"admin_area_hits": [], "admin_area_blocked": False, "admin_area_risk": 0}
-    hits, blocked, max_risk = [], False, 0
-    for item in controls:
-        try:
-            lat, lon = float(item["latitude"]), float(item["longitude"])
-            radius = max(80.0, float(item.get("radius_m") or 350))
-            distance = min_distance_to_geometry_m(lat, lon, coords)
-        except Exception:
-            continue
-        if distance > radius:
-            continue
-        cap = int(clamp(int(item.get("level_cap") if item.get("level_cap") is not None else 5), 0, 5))
-        risk_level = int(clamp(5-cap, 0, 5))
-        effective_block = bool(item.get("effective_block"))
-        blocked = blocked or effective_block
-        max_risk = max(max_risk, risk_level)
-        hits.append({
-            "id": item.get("id"), "name": item.get("name") or "Área administrada",
-            "city": item.get("city") or "", "state": item.get("state") or "",
-            "risk_level": risk_level, "block_routing": effective_block,
-            "distance_to_route_m": round(float(distance), 1),
-        })
-    return {"admin_area_hits": hits[:8], "admin_area_blocked": blocked, "admin_area_risk": max_risk}
 
 
 def get_active_reports_for_bounds(min_lat, min_lon, max_lat, max_lon):
@@ -3091,7 +3076,7 @@ def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walkin
     return routes
 
 
-def mapbox_routes_via(points, depart_at="now", extra_excludes=None):
+def mapbox_routes_via(points, depart_at="now"):
     """Recalcula o ETA de uma rota atual usando pontos silenciosos como guias do caminho."""
     clean = []
     for item in (points or [])[:8]:
@@ -3120,13 +3105,6 @@ def mapbox_routes_via(points, depart_at="now", extra_excludes=None):
         # Os pontos intermediários orientam o caminho sem criar chegadas/partidas artificiais.
         "waypoints": f"0;{len(clean)-1}",
     }
-    excludes = []
-    for value in (extra_excludes or []):
-        value = str(value or "").strip().lower()
-        if value in {"unpaved", "toll", "ferry", "motorway", "tunnel", "cash_only_tolls"} and value not in excludes:
-            excludes.append(value)
-    if excludes:
-        params["exclude"] = ",".join(excludes)
     try:
         data = mapbox_get(f"{MAPBOX_DIRECTIONS_URL}/driving-traffic/{coords}", params, timeout=18)
         used = "driving-traffic"
@@ -3598,7 +3576,7 @@ def traffic_hotspot_clusters(route, max_clusters=6):
     return out[:max_clusters]
 
 
-def build_fast_micro_routes(base_routes, start_lon, start_lat, end_lon, end_lat, depart_at="now", extra_excludes=None):
+def build_fast_micro_routes(base_routes, start_lon, start_lat, end_lon, end_lat, depart_at="now"):
     """Generate ETA-only block bypasses in parallel around live congestion.
 
     Important: fastest mode never consults the Safety Engine. The provider ETA is
@@ -3631,7 +3609,7 @@ def build_fast_micro_routes(base_routes, start_lon, start_lat, end_lon, end_lat,
         try:
             found = mapbox_routes(
                 start_lon, start_lat, end_lon, end_lat, "driving", depart_at,
-                exclusions=spec["points"], alternatives=False, extra_excludes=extra_excludes,
+                exclusions=spec["points"], alternatives=False, extra_excludes=None,
             )
             if not found:
                 return None
@@ -5004,12 +4982,10 @@ def profile():
         can_publish_presence = bool(user and int(user["is_app_driver"] or 0) == 1 and int(user["age"] or 0) >= 18 and user["presence_terms_accepted_at"])
         presence_visible = 1 if visibility and can_publish_presence else 0
         networks = [x.strip()[:40] for x in request.form.getlist("fuel_networks") if x.strip()][:12]
-        # Map appearance controls are currently hidden from Settings. Preserve the
-        # user's stored values instead of resetting them whenever the form is saved.
-        map_style = ((request.form.get("map_style") if "map_style" in request.form else (user["map_style"] if user else "auto")) or "auto").strip().lower()
+        map_style = (request.form.get("map_style") or "auto").strip().lower()
         if map_style not in {"auto", "day", "afternoon", "night", "rain"}:
             map_style = "auto"
-        map_accent = ((request.form.get("map_accent") if "map_accent" in request.form else (user["map_accent"] if user else "violet")) or "violet").strip().lower()
+        map_accent = (request.form.get("map_accent") or "violet").strip().lower()
         if map_accent not in MAPBOX_ACCENT_PRESETS:
             map_accent = "violet"
         avoid_ferries = 1 if request.form.get("avoid_ferries") == "1" else 0
@@ -5268,6 +5244,57 @@ def admin_users():
     return render_template("admin_users.html", users=users)
 
 
+@app.route("/api/admin/users/<int:user_id>")
+@admin_required
+def api_admin_user_detail(user_id):
+    """Admin-only compact user detail payload used by the 'Saber mais' modal."""
+    db = get_db()
+    user = db.execute(
+        """SELECT id,name,email,role,locale,is_active,created_at,last_login_at,auth_provider,
+                  age,sex,is_app_driver,route_preference,distance_unit,presence_visible,
+                  map_style,map_accent,avoid_ferries,avoid_tolls,avoid_unpaved
+           FROM users WHERE id=?""",
+        (user_id,),
+    ).fetchone()
+    if not user:
+        return jsonify({"error": "Usuário não encontrado."}), 404
+    routes = db.execute(
+        """SELECT id,origin_label,destination_label,mode,distance_m,duration_s,safety_score,created_at
+           FROM route_history WHERE user_id=? ORDER BY created_at DESC LIMIT 10""",
+        (user_id,),
+    ).fetchall()
+    alerts = db.execute(
+        """SELECT id,category,title,address,latitude,longitude,status,confirmations,created_at
+           FROM reports WHERE user_id=? ORDER BY created_at DESC LIMIT 10""",
+        (user_id,),
+    ).fetchall()
+    sessions = db.execute(
+        """SELECT id,created_at,last_used_at,expires_at,revoked_at
+           FROM auth_sessions WHERE user_id=? ORDER BY last_used_at DESC LIMIT 8""",
+        (user_id,),
+    ).fetchall()
+    counts = db.execute(
+        """SELECT
+             (SELECT COUNT(*) FROM route_history WHERE user_id=?) AS route_count,
+             (SELECT COUNT(*) FROM reports WHERE user_id=?) AS alert_count""",
+        (user_id, user_id),
+    ).fetchone()
+    return jsonify({
+        "user": dict(user),
+        "routes": [dict(x) for x in routes],
+        "alerts": [{**dict(x), "category_label": CATEGORY_META.get(x["category"], CATEGORY_META["other"])["label"]} for x in alerts],
+        # This version did not historically store IP/User-Agent. Expose real session
+        # timestamps without fabricating device/IP information.
+        "accesses": [{
+            "id": int(x["id"]), "browser": "Sessão VAIGO", "os_name": "—", "device_type": "Sessão persistente",
+            "ip_address": "Não registrado", "created_at": x["created_at"], "last_used_at": x["last_used_at"],
+            "expires_at": x["expires_at"], "revoked": bool(x["revoked_at"]),
+        } for x in sessions],
+        "last_ip": None,
+        "counts": dict(counts) if counts else {"route_count": 0, "alert_count": 0},
+    })
+
+
 @app.route("/admin/reports")
 @admin_required
 def admin_reports():
@@ -5291,52 +5318,6 @@ def admin_report_status(report_id):
     audit("admin_report_status", {"report_id": report_id, "status": status})
     flash("Status do alerta atualizado.", "success")
     return redirect(request.referrer or url_for("admin_reports"))
-
-
-@app.route("/api/admin/users/<int:user_id>")
-@admin_required
-def api_admin_user_detail(user_id):
-    """JSON-only detail endpoint used by the admin 'Saber mais' modal."""
-    db = get_db()
-    user = db.execute(
-        """SELECT id,name,email,role,locale,is_active,created_at,last_login_at,auth_provider,
-                  is_app_driver,route_preference,distance_unit,map_style,map_accent,presence_visible,
-                  avoid_ferries,avoid_tolls,avoid_unpaved
-           FROM users WHERE id=?""",
-        (user_id,),
-    ).fetchone()
-    if not user:
-        return jsonify({"ok": False, "error": "Usuário não encontrado."}), 404
-
-    routes = [dict(x) for x in db.execute(
-        """SELECT id,origin_label,destination_label,mode,distance_m,duration_s,safety_score,created_at
-           FROM route_history WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT 10""",
-        (user_id,),
-    ).fetchall()]
-    alert_rows = db.execute(
-        """SELECT id,category,title,address,latitude,longitude,status,confirmations,created_at
-           FROM reports WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT 10""",
-        (user_id,),
-    ).fetchall()
-    alerts = []
-    for row in alert_rows:
-        item = dict(row)
-        item["category_label"] = CATEGORY_META.get(str(item.get("category") or "other"), CATEGORY_META["other"])["label"]
-        alerts.append(item)
-    route_count = db.execute("SELECT COUNT(*) FROM route_history WHERE user_id=?", (user_id,)).fetchone()[0]
-    alert_count = db.execute("SELECT COUNT(*) FROM reports WHERE user_id=?", (user_id,)).fetchone()[0]
-
-    # Esta versão não persistia IP/user-agent historicamente. Não inventamos esses
-    # dados: o contrato JSON permanece estável e a UI mostra 'não registrado'.
-    return jsonify({
-        "ok": True,
-        "user": dict(user),
-        "last_ip": None,
-        "accesses": [],
-        "routes": routes,
-        "alerts": alerts,
-        "counts": {"route_count": int(route_count or 0), "alert_count": int(alert_count or 0)},
-    })
 
 
 @app.route("/admin/users/<int:user_id>/toggle", methods=["POST"])
@@ -5364,97 +5345,78 @@ def admin_risk_zones():
     if request.method == "POST":
         if not validate_csrf():
             abort(400)
-        entry_mode = str(request.form.get("entry_mode") or "neighborhood").strip().lower()
-
-        if entry_mode == "neighborhood":
-            name = request.form.get("name", "").strip()[:100]
-            city = request.form.get("city", "").strip()[:80]
-            state = request.form.get("state", "").strip()[:40]
-            reason = request.form.get("reason", "").strip()[:120]
-            source_url = request.form.get("source_url", "").strip()[:500]
-            block_routing = 1 if request.form.get("block_routing") in {"1", "on", "true", "yes"} else 0
-            try:
-                radius = clamp(float(request.form.get("radius_m", 900)), 180, 5000)
-                risk_level = int(clamp(int(request.form.get("risk_level", 3)), 1, 5))
-            except (TypeError, ValueError):
-                radius, risk_level = 900, 3
-            if not name or not city:
-                flash("Informe o bairro/área e a cidade.", "danger")
-                return redirect(url_for("admin_risk_zones"))
-            if not reason:
-                flash("Informe o motivo operacional/segurança usado para essa classificação.", "danger")
-                return redirect(url_for("admin_risk_zones"))
-            if not mapbox_ready():
-                flash("O Mapbox precisa estar configurado para localizar o bairro pelo nome.", "danger")
-                return redirect(url_for("admin_risk_zones"))
-
-            query = ", ".join(x for x in [name, city, state, "Brasil"] if x)
-            try:
-                found = mapbox_forward_geocode(query, language="pt-BR")
-            except Exception as exc:
-                flash(f"Não foi possível localizar essa área agora: {str(exc)[:140]}", "danger")
-                return redirect(url_for("admin_risk_zones"))
-            preferred = next((x for x in found if x.get("type") in {"neighborhood", "district", "locality", "place"}), None)
-            selected = preferred or (found[0] if found else None)
-            if not selected:
-                flash("Não encontrei esse bairro/área no Mapbox. Revise o nome e a cidade.", "danger")
-                return redirect(url_for("admin_risk_zones"))
-
-            lat, lon = float(selected["lat"]), float(selected["lon"])
-            # Nível de risco 1–5 é convertido para o teto de segurança 4–0.
-            # Quando o admin marca bloqueio, o teto vira 0/5.
-            cap = 0 if block_routing else int(clamp(5-risk_level, 0, 4))
-            confidence = .98 if block_routing else .90
-            source = f"Admin · {reason}"[:120]
-            now = utcnow_iso()
-            db.execute(
-                """INSERT INTO risk_zones(
-                       name,risk_type,latitude,longitude,radius_m,level_cap,confidence,source,source_url,
-                       start_hour,end_hour,active,area_kind,city,state,query_label,block_routing,admin_risk_level,created_at,updated_at
-                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (name, "verified_incident_area", lat, lon, radius, cap, confidence, source, source_url,
-                 None, None, 1, "neighborhood", city, state, selected.get("label") or query,
-                 block_routing, risk_level, now, now),
-            )
-            db.commit()
-            audit("admin_neighborhood_create", {
-                "name": name, "city": city, "risk_level": risk_level,
-                "block_routing": bool(block_routing), "radius_m": radius,
-            })
-            flash("Bairro/área cadastrado e aplicado ao motor de rotas.", "success")
-            return redirect(url_for("admin_risk_zones"))
-
-        # Modo avançado preservado para zonas por coordenada já existentes.
+        neighborhood = request.form.get("neighborhood", "").strip()[:100]
+        city = request.form.get("city", "São Paulo").strip()[:100]
+        state = request.form.get("state", "SP").strip()[:40]
+        reason = request.form.get("reason", "").strip()[:160]
+        source_url = request.form.get("source_url", "").strip()[:500]
+        block_routes = 1 if request.form.get("block_routes") in {"1","true","on","yes"} else 0
         try:
-            name = request.form.get("name", "").strip()[:100]
-            risk_type = request.form.get("risk_type", "verified_incident_area").strip()[:40]
-            lat = float(request.form.get("latitude", "")); lon = float(request.form.get("longitude", ""))
-            radius = clamp(float(request.form.get("radius_m", 350)), 80, 5000)
-            cap = clamp(int(request.form.get("level_cap", 3)), 0, 5)
-            confidence = clamp(float(request.form.get("confidence", .75)), 0, 1)
-            source = request.form.get("source", "admin").strip()[:120] or "admin"
-            source_url = request.form.get("source_url", "").strip()[:500]
-            sh = request.form.get("start_hour", "").strip(); eh = request.form.get("end_hour", "").strip()
-            start_hour = int(sh) if sh else None; end_hour = int(eh) if eh else None
-            if not name or not (-90 <= lat <= 90 and -180 <= lon <= 180):
-                raise ValueError
-            if start_hour is not None and not 0 <= start_hour <= 23: raise ValueError
-            if end_hour is not None and not 0 <= end_hour <= 23: raise ValueError
-        except ValueError:
-            flash("Revise os dados da zona de atenção.", "danger")
-        else:
-            now = utcnow_iso()
-            db.execute(
-                """INSERT INTO risk_zones(name,risk_type,latitude,longitude,radius_m,level_cap,confidence,source,source_url,start_hour,end_hour,active,area_kind,city,state,query_label,block_routing,admin_risk_level,created_at,updated_at)
-                   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (name,risk_type,lat,lon,radius,cap,confidence,source,source_url,start_hour,end_hour,1,"zone","","","",0,3,now,now),
-            )
-            db.commit(); audit("admin_risk_zone_create", {"name": name, "level_cap": cap})
-            flash("Zona de atenção adicionada.", "success")
+            danger_level = int(clamp(int(request.form.get("danger_level", 3)), 1, 5))
+            radius = float(clamp(float(request.form.get("radius_m", 900)), 150, 5000))
+        except (TypeError, ValueError):
+            danger_level, radius = 3, 900
+        if not neighborhood or not city or not reason:
+            flash("Informe bairro, cidade e o motivo/fonte do risco.", "danger")
             return redirect(url_for("admin_risk_zones"))
-
-    zones = db.execute("SELECT * FROM risk_zones ORDER BY active DESC,block_routing DESC,updated_at DESC,id DESC LIMIT 500").fetchall()
+        if not mapbox_ready():
+            flash("Configure MAPBOX_ACCESS_TOKEN para localizar o bairro automaticamente.", "danger")
+            return redirect(url_for("admin_risk_zones"))
+        try:
+            query = ", ".join(x for x in [neighborhood, city, state, "Brasil"] if x)
+            found = mapbox_forward_geocode(query, language="pt-BR")
+        except Exception as exc:
+            app.logger.warning("Admin neighborhood geocode failed: %s", exc)
+            found = []
+        if not found:
+            flash("Não consegui localizar esse bairro. Revise bairro/cidade/estado.", "danger")
+            return redirect(url_for("admin_risk_zones"))
+        best = found[0]
+        lat, lon = float(best["lat"]), float(best["lon"])
+        # Existing Safety Engine uses a maximum safety level. Danger 5 => cap 0.
+        level_cap = int(clamp(5-danger_level, 0, 4))
+        confidence = .92 if block_routes else .84
+        now = utcnow_iso()
+        db.execute(
+            """INSERT INTO risk_zones(name,risk_type,latitude,longitude,radius_m,level_cap,confidence,
+                                      source,source_url,start_hour,end_hour,neighborhood,city,state,danger_level,
+                                      block_routes,active,created_at,updated_at)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (f"{neighborhood} · {city}", "admin_neighborhood_risk", lat, lon, radius, level_cap, confidence,
+             reason, source_url, None, None, neighborhood, city, state, danger_level, block_routes, 1, now, now),
+        )
+        db.commit()
+        audit("admin_risk_zone_create", {"neighborhood": neighborhood, "city": city, "danger_level": danger_level, "block_routes": bool(block_routes)})
+        flash("Bairro/área cadastrado e aplicado ao motor de rotas.", "success")
+        return redirect(url_for("admin_risk_zones"))
+    zones = db.execute("SELECT * FROM risk_zones ORDER BY active DESC, block_routes DESC, danger_level DESC, updated_at DESC, id DESC LIMIT 500").fetchall()
     return render_template("admin_risk_zones.html", zones=zones)
+
+
+@app.route("/admin/risk-zones/<int:zone_id>/update", methods=["POST"])
+@admin_required
+def admin_risk_zone_update(zone_id):
+    if not validate_csrf():
+        abort(400)
+    db = get_db()
+    row = db.execute("SELECT id FROM risk_zones WHERE id=?", (zone_id,)).fetchone()
+    if not row:
+        abort(404)
+    try:
+        danger_level = int(clamp(int(request.form.get("danger_level", 3)), 1, 5))
+        radius = float(clamp(float(request.form.get("radius_m", 900)), 150, 5000))
+    except (TypeError, ValueError):
+        return jsonify({"error":"Valores inválidos."}), 400
+    block_routes = 1 if request.form.get("block_routes") in {"1","true","on","yes"} else 0
+    level_cap = int(clamp(5-danger_level, 0, 4))
+    db.execute(
+        "UPDATE risk_zones SET danger_level=?,level_cap=?,radius_m=?,block_routes=?,updated_at=? WHERE id=?",
+        (danger_level, level_cap, radius, block_routes, utcnow_iso(), zone_id),
+    )
+    db.commit()
+    audit("admin_risk_zone_update", {"zone_id": zone_id, "danger_level": danger_level, "block_routes": bool(block_routes)})
+    flash("Política da área atualizada.", "success")
+    return redirect(url_for("admin_risk_zones"))
 
 
 @app.route("/admin/risk-zones/<int:zone_id>/toggle", methods=["POST"])
@@ -5464,60 +5426,7 @@ def admin_risk_zone_toggle(zone_id):
     db=get_db(); row=db.execute("SELECT active FROM risk_zones WHERE id=?", (zone_id,)).fetchone()
     if not row: abort(404)
     db.execute("UPDATE risk_zones SET active=?,updated_at=? WHERE id=?", (0 if row["active"] else 1, utcnow_iso(), zone_id)); db.commit()
-    audit("admin_risk_zone_toggle", {"zone_id": zone_id}); flash("Zona atualizada.", "success")
-    return redirect(url_for("admin_risk_zones"))
-
-
-@app.route("/admin/risk-zones/<int:zone_id>/block", methods=["POST"])
-@admin_required
-def admin_risk_zone_block_toggle(zone_id):
-    if not validate_csrf():
-        abort(400)
-    db = get_db()
-    row = db.execute("SELECT block_routing,area_kind,name FROM risk_zones WHERE id=?", (zone_id,)).fetchone()
-    if not row:
-        abort(404)
-    if str(row["area_kind"] or "") != "neighborhood":
-        flash("O bloqueio rápido é exclusivo de bairros/áreas cadastrados.", "warning")
-        return redirect(url_for("admin_risk_zones"))
-    new_value = 0 if int(row["block_routing"] or 0) else 1
-    stored_risk = db.execute("SELECT admin_risk_level FROM risk_zones WHERE id=?", (zone_id,)).fetchone()
-    risk_level = int(clamp(int((stored_risk["admin_risk_level"] if stored_risk else 3) or 3), 1, 5))
-    db.execute(
-        "UPDATE risk_zones SET block_routing=?,level_cap=?,confidence=?,updated_at=? WHERE id=?",
-        (new_value, 0 if new_value else int(clamp(5-risk_level,0,4)), .98 if new_value else .90, utcnow_iso(), zone_id),
-    )
-    db.commit()
-    audit("admin_neighborhood_block_toggle", {"zone_id": zone_id, "blocked": bool(new_value)})
-    flash("Política de rota do bairro atualizada.", "success")
-    return redirect(url_for("admin_risk_zones"))
-
-
-@app.route("/admin/risk-zones/<int:zone_id>/risk", methods=["POST"])
-@admin_required
-def admin_risk_zone_risk_update(zone_id):
-    if not validate_csrf():
-        abort(400)
-    try:
-        risk_level = int(clamp(int(request.form.get("risk_level", 3)), 1, 5))
-    except (TypeError, ValueError):
-        flash("Nível de risco inválido.", "danger")
-        return redirect(url_for("admin_risk_zones"))
-    db = get_db()
-    row = db.execute("SELECT area_kind,block_routing FROM risk_zones WHERE id=?", (zone_id,)).fetchone()
-    if not row:
-        abort(404)
-    if str(row["area_kind"] or "") != "neighborhood":
-        flash("Esse ajuste é exclusivo de bairros/áreas cadastrados.", "warning")
-        return redirect(url_for("admin_risk_zones"))
-    cap = 0 if int(row["block_routing"] or 0) else int(clamp(5-risk_level, 0, 4))
-    db.execute(
-        "UPDATE risk_zones SET admin_risk_level=?,level_cap=?,updated_at=? WHERE id=?",
-        (risk_level, cap, utcnow_iso(), zone_id),
-    )
-    db.commit()
-    audit("admin_neighborhood_risk_update", {"zone_id": zone_id, "risk_level": risk_level})
-    flash("Nível de risco atualizado.", "success")
+    audit("admin_risk_zone_toggle", {"zone_id": zone_id}); flash("Área atualizada.", "success")
     return redirect(url_for("admin_risk_zones"))
 
 
@@ -6122,41 +6031,9 @@ def traffic_recommendation():
     travel_profile = str(payload.get("profile") or "driving").strip().lower()
     if travel_profile not in {"driving", "motorcycle"}:
         travel_profile = "driving"
-    trigger_reason = str(payload.get("trigger_reason") or "periodic").strip().lower()[:40]
-    if trigger_reason not in {"periodic", "startup", "stopped_60s", "abrupt_slowdown", "manual"}:
-        trigger_reason = "periodic"
-    try:
-        lookahead_m = int(clamp(float(payload.get("lookahead_m", 5000)), 1200, 5000))
-    except Exception:
-        lookahead_m = 5000
     user_nav = navigation_profile(session.get("user_id"), local_hour, travel_profile)
-    pref_payload = payload.get("navigation_preferences") if isinstance(payload.get("navigation_preferences"), dict) else {}
-    avoid_ferries = bool(pref_payload.get("avoid_ferries"))
-    avoid_tolls = bool(pref_payload.get("avoid_tolls"))
-    avoid_unpaved = bool(pref_payload.get("avoid_unpaved"))
-    if session.get("user_id"):
-        try:
-            pref_row = get_db().execute("SELECT avoid_ferries,avoid_tolls,avoid_unpaved FROM users WHERE id=?", (int(session["user_id"]),)).fetchone()
-            if pref_row:
-                avoid_ferries = bool(pref_row["avoid_ferries"])
-                avoid_tolls = bool(pref_row["avoid_tolls"])
-                avoid_unpaved = bool(pref_row["avoid_unpaved"])
-        except Exception:
-            pass
-    route_extra_excludes = []
-    if avoid_ferries:
-        route_extra_excludes.append("ferry")
-    if avoid_tolls:
-        route_extra_excludes.append("toll")
-    if avoid_unpaved or travel_profile == "motorcycle" or user_nav["professional_driver"]:
-        route_extra_excludes.append("unpaved")
-    route_extra_excludes = route_extra_excludes or None
+    route_extra_excludes = ["unpaved"] if (travel_profile == "motorcycle" or user_nav["professional_driver"]) else None
     pro_exclusions, pro_exclusion_reasons = (([], []) if fast_eta_only else (professional_exclusion_points(clat, clon, dlat, dlon, local_hour) if user_nav["professional_driver"] else ([], [])))
-    admin_area_controls, admin_area_exclusions, admin_area_reasons = admin_area_route_context(clat, clon, dlat, dlon)
-    combined_live_exclusions = list(admin_area_exclusions)
-    if user_nav["professional_driver"] and not fast_eta_only:
-        combined_live_exclusions.extend(pro_exclusions)
-    combined_live_exclusions = combined_live_exclusions[:18] or None
     future = []
     for point in (payload.get("future_points") or [])[:4]:
         try:
@@ -6170,38 +6047,24 @@ def traffic_recommendation():
         try:
             # Fresh Mapbox traffic-aware alternatives from the current GPS position,
             # expanded by Spark with nearby block/corridor micro-variants.
-            baseline_raw = mapbox_routes_via(forced_points, "now", extra_excludes=route_extra_excludes)
-            base_routes = mapbox_routes(clon, clat, dlon, dlat, travel_profile, "now", exclusions=admin_area_exclusions or None, alternatives=True, extra_excludes=route_extra_excludes)
+            baseline_raw = mapbox_routes_via(forced_points, "now")
+            base_routes = mapbox_routes(clon, clat, dlon, dlat, travel_profile, "now", alternatives=True, extra_excludes=route_extra_excludes)
             if not base_routes:
                 raise RuntimeError("Nenhuma rota de trânsito disponível")
-            base_routes = ensure_adaptive_route_pool(base_routes, clon, clat, dlon, dlat, "now", target=6, budget=6, base_exclusions=admin_area_exclusions or None, extra_excludes=route_extra_excludes)
-            dense_micro = build_dense_micro_route_pool(base_routes, clon, clat, dlon, dlat, "now", budget=10, base_exclusions=admin_area_exclusions or None, extra_excludes=route_extra_excludes)
-            micro = build_fast_micro_routes(base_routes + dense_micro, clon, clat, dlon, dlat, "now", extra_excludes=route_extra_excludes)
+            base_routes = ensure_adaptive_route_pool(base_routes, clon, clat, dlon, dlat, "now", target=6, budget=6)
+            dense_micro = build_dense_micro_route_pool(base_routes, clon, clat, dlon, dlat, "now", budget=10)
+            micro = build_fast_micro_routes(base_routes + dense_micro, clon, clat, dlon, dlat, "now")
             raw_candidates = select_diverse_routes(base_routes + dense_micro + micro, max_routes=13, max_overlap=.985, sort_key=lambda r: float(r.get("duration", 10**12)))
-            if admin_area_controls:
-                for raw in raw_candidates:
-                    raw["_admin_area_status"] = route_admin_area_status(raw, admin_area_controls)
-                permitted = [x for x in raw_candidates if not (x.get("_admin_area_status") or {}).get("admin_area_blocked")]
-                if permitted:
-                    raw_candidates = permitted
-            candidates = []
-            for idx, raw in enumerate(raw_candidates):
-                item = fast_route_payload(raw, idx, travel_profile)
-                item.update(raw.get("_admin_area_status") or {})
-                candidates.append(item)
+            candidates = [fast_route_payload(raw, idx, travel_profile) for idx, raw in enumerate(raw_candidates)]
             baseline = fast_route_payload(baseline_raw, 999, travel_profile)
             best = min(candidates, key=lambda r: float(r.get("duration", 10**12))) if candidates else baseline
             base_s = float(baseline.get("duration") or 0)
             best_s = float(best.get("duration") or base_s)
             saving = max(0.0, base_s - best_s)
-            motion_triggered = trigger_reason in {"stopped_60s", "abrupt_slowdown"}
-            fast_corridors = [x for x in (baseline.get("traffic_corridors") or []) if float(x.get("distance_start_m") or 0) <= lookahead_m]
-            corridor_peak = max([float(x.get("score") or 0) for x in fast_corridors] + [0.0])
-            corridor_severe = sum(1 for x in fast_corridors if float(x.get("score") or 0) >= 74)
-            traffic_detected = bool((corridor_peak >= 35 or corridor_severe > 0) if motion_triggered else (float(baseline.get("traffic_score") or 0) >= 35 or int(baseline.get("severe_segments") or 0) > 0))
+            traffic_detected = bool(float(baseline.get("traffic_score") or 0) >= 35 or int(baseline.get("severe_segments") or 0) > 0)
             # Fast mode can suggest even modest improvements; ETA is the only objective.
             threshold = max(20.0, min(75.0, base_s * .018))
-            recommend = bool(best and traffic_detected and route_overlap_ratio(best, baseline) < .95 and saving >= threshold)
+            recommend = bool(best and route_overlap_ratio(best, baseline) < .95 and saving >= threshold)
             return jsonify({
                 "traffic_detected": traffic_detected, "mapped_road_detected": False,
                 "traffic_level": baseline.get("traffic_level", "Sem dados"),
@@ -6212,11 +6075,7 @@ def traffic_recommendation():
                 "baseline_duration": base_s, "recommend": recommend,
                 "saving_seconds": round(saving), "saving_minutes": max(1, round(saving/60)) if recommend else 0,
                 "fast_eta_only": True,
-                "trigger_reason": trigger_reason, "lookahead_m": lookahead_m,
-                "corridor_peak_score": round(corridor_peak, 1),
-                "navigation_preferences": {"avoid_ferries": avoid_ferries, "avoid_tolls": avoid_tolls, "avoid_unpaved": avoid_unpaved},
-                "admin_area_policy": {"active": bool(admin_area_controls), "blocked_areas": sum(1 for x in admin_area_controls if x.get("effective_block")), "reasons": admin_area_reasons},
-                "auto_apply": False if motion_triggered else bool(recommend and best and best.get("micro_route")),
+                "auto_apply": bool(recommend and best and best.get("micro_route")),
                 "suggestion": {"route": best, "kind": "micro" if best and best.get("micro_route") else "alternative"} if recommend else None,
                 "message": (f"Rota mais rápida encontrada: economiza cerca de {max(1,round(saving/60))} min." if recommend else ("Trânsito detectado; nenhuma alternativa ficou realmente mais rápida agora." if traffic_detected else "Fluxo sem ganho de ETA relevante em outra rota.")),
             })
@@ -6224,20 +6083,20 @@ def traffic_recommendation():
             return jsonify({"error": "Não foi possível atualizar a rota rápida agora.", "detail": str(exc)}), 502
 
     try:
-        baseline = mapbox_routes_via(forced_points, "now", extra_excludes=route_extra_excludes) if len(forced_points) >= 2 else mapbox_routes(clon, clat, dlon, dlat, travel_profile, "now", alternatives=False, extra_excludes=route_extra_excludes)[0]
+        baseline = mapbox_routes_via(forced_points, "now") if len(forced_points) >= 2 else mapbox_routes(clon, clat, dlon, dlat, travel_profile, "now", alternatives=False, extra_excludes=route_extra_excludes)[0]
         alternatives = mapbox_routes(
             clon, clat, dlon, dlat, travel_profile, "now",
-            exclusions=combined_live_exclusions,
+            exclusions=pro_exclusions if user_nav["professional_driver"] else None,
             alternatives=True, extra_excludes=route_extra_excludes,
         )
         alternatives = ensure_adaptive_route_pool(
             alternatives, clon, clat, dlon, dlat, "now", target=6, budget=6,
-            base_exclusions=combined_live_exclusions,
+            base_exclusions=(pro_exclusions if user_nav["professional_driver"] else None),
             extra_excludes=route_extra_excludes,
         )
         alternatives.extend(build_dense_micro_route_pool(
             [baseline] + alternatives, clon, clat, dlon, dlat, "now", budget=10,
-            base_exclusions=combined_live_exclusions,
+            base_exclusions=(pro_exclusions if user_nav["professional_driver"] else None),
             extra_excludes=route_extra_excludes,
         ))
         exact_live = {}
@@ -6272,7 +6131,7 @@ def traffic_recommendation():
                 avoid_points.append(point)
         if avoid_points:
             try:
-                merged_avoid = list(combined_live_exclusions or []) + list(avoid_points[:6])
+                merged_avoid = list(pro_exclusions if user_nav["professional_driver"] else []) + list(avoid_points[:6])
                 micro = mapbox_routes(
                     clon, clat, dlon, dlat, travel_profile, "now", merged_avoid[:18], alternatives=False,
                     extra_excludes=route_extra_excludes,
@@ -6312,7 +6171,6 @@ def traffic_recommendation():
             traffic["traffic_level"]=traffic_level_from_score(traffic["traffic_score"])
         road=route_road_controls(raw)
         professional=professional_route_assessment(raw,risk,road) if user_nav["professional_driver"] else {"professional_ok":True,"professional_flags":[],"exclusion_violations":[]}
-        admin_area_status=route_admin_area_status(raw,admin_area_controls)
         return {
             "id": idx, "distance": raw.get("distance",0), "duration": raw.get("duration",0), "duration_min": round(float(raw.get("duration",0))/60,1),
             "geometry": raw.get("geometry"), "steps": compact_steps(raw), "profile":travel_profile,
@@ -6321,7 +6179,7 @@ def traffic_recommendation():
             "micro_traffic_relief": round(float(raw.get("_micro_traffic_relief") or 0), 1),
             "live_road_avoided": int(raw.get("_live_road_avoided",0) or 0),
             "routing_profile_used": raw.get("_profile_used", "driving-traffic"), "routing_provider": raw.get("_provider", "mapbox"), "route_signature": route_signature(raw),
-            **risk, **{k:v for k,v in traffic.items() if k != "traffic_points"}, **flow, **road, **professional, **admin_area_status,
+            **risk, **{k:v for k,v in traffic.items() if k != "traffic_points"}, **flow, **road, **professional,
         }
     base = enrich_live(baseline, 0)
     options=[]
@@ -6338,7 +6196,7 @@ def traffic_recommendation():
     apply_route_intelligence([base] + options, "driving", safety_bias=live_safety_bias, traffic_bias=live_traffic_bias)
     safety_floor=max(0, max(current_level, int(base.get("safety_level", current_level))))
     base_s=float(base.get("duration") or 0)
-    safe_options=[r for r in options if not r.get("admin_area_blocked") and (r.get("professional_ok",True) or not user_nav["professional_driver"]) and int(r.get("safety_level",0)) >= safety_floor and float(r.get("duration") or 1e12) <= max(base_s*(1.12 if user_nav["night_active"] else 1.08), base_s+(150 if user_nav["night_active"] else 90))]
+    safe_options=[r for r in options if (r.get("professional_ok",True) or not user_nav["professional_driver"]) and int(r.get("safety_level",0)) >= safety_floor and float(r.get("duration") or 1e12) <= max(base_s*(1.12 if user_nav["night_active"] else 1.08), base_s+(150 if user_nav["night_active"] else 90))]
     best=max(safe_options, key=lambda r:(float(r.get("spark_score",0)), -float(r.get("duration",1e12)))) if safe_options else None
     base_traffic_score = float(base.get("traffic_score") or 0)
     if base_traffic_score >= 40:
@@ -6349,13 +6207,8 @@ def traffic_recommendation():
     # Avoid noisy reroutes: normal congestion needs ~2 min improvement. Severe
     # congestion/closures can justify a smaller but still meaningful safe detour.
     threshold=max(120.0, min(240.0, base_s*0.055))
-    motion_triggered = trigger_reason in {"stopped_60s", "abrupt_slowdown"}
-    corridor_hotspots = [x for x in (base.get("traffic_corridors") or []) if float(x.get("distance_start_m") or 0) <= lookahead_m]
-    corridor_peak = max([float(x.get("score") or 0) for x in corridor_hotspots] + [0.0])
-    corridor_severe_count = sum(1 for x in corridor_hotspots if float(x.get("score") or 0) >= 74)
-    corridor_delay_s = sum(max(0.0, float(x.get("delay_s") or 0)) for x in corridor_hotspots)
-    traffic_detected=bool((corridor_peak >= 42 or corridor_severe_count > 0) if motion_triggered else (float(base.get("traffic_score",0)) >= 42 or int(base.get("severe_segments",0)) > 0))
-    severe_traffic=bool((corridor_peak >= 74 or corridor_severe_count >= 2) if motion_triggered else (float(base.get("traffic_score",0)) >= 74 or int(base.get("severe_segments",0)) >= 2))
+    traffic_detected=bool(float(base.get("traffic_score",0)) >= 42 or int(base.get("severe_segments",0)) > 0)
+    severe_traffic=bool(float(base.get("traffic_score",0)) >= 74 or int(base.get("severe_segments",0)) >= 2)
     closure_detected=bool(int(base.get("closures_count",0) or 0)>0)
     mapped_road_detected=bool(locals().get("mapped_avoid"))
     # Se houver obstáculo viário mapeado sobre o corredor, uma alternativa pode ser
@@ -6363,7 +6216,7 @@ def traffic_recommendation():
     # e a um detour pequeno. Como OSM não é um feed instantâneo, a UI informa isso.
     road_benefit=bool(best and int(best.get("live_road_avoided",0) or 0)>0 and float(best.get("duration") or 1e12) <= base_s*1.08)
     recommend=bool(best and ((traffic_detected and saving >= threshold) or (severe_traffic and saving >= 60.0) or closure_detected or (mapped_road_detected and road_benefit)))
-    auto_apply=bool((not motion_triggered) and recommend and best and best.get("micro_route") and route_mode=="smart" and (saving>=30.0 or severe_traffic or closure_detected or (float(best.get("micro_traffic_relief") or 0)>=10 and float(best.get("duration") or 1e12)<=base_s*1.03)))
+    auto_apply=bool(recommend and best and best.get("micro_route") and route_mode=="smart" and (saving>=30.0 or severe_traffic or closure_detected or (float(best.get("micro_traffic_relief") or 0)>=10 and float(best.get("duration") or 1e12)<=base_s*1.03)))
     return jsonify({
         "traffic_detected": traffic_detected,
         "severe_traffic": severe_traffic,
@@ -6376,17 +6229,11 @@ def traffic_recommendation():
         "traffic_level": base.get("traffic_level","Sem dados"),
         "traffic_score": base.get("traffic_score",0),
         "congested_distance_km": base.get("congested_distance_km",0),
-        "hotspots": (corridor_hotspots if motion_triggered else (base.get("traffic_corridors") or []))[:8],
-        "traffic_delay_min": round(corridor_delay_s/60.0, 1) if motion_triggered else base.get("traffic_delay_min",0),
+        "hotspots": (base.get("traffic_corridors") or [])[:8],
+        "traffic_delay_min": base.get("traffic_delay_min",0),
         "baseline_duration": base_s,
         "recommend": recommend,
         "auto_apply": auto_apply,
-        "trigger_reason": trigger_reason,
-        "lookahead_m": lookahead_m,
-        "corridor_peak_score": round(corridor_peak, 1),
-        "corridor_severe_segments": corridor_severe_count,
-        "navigation_preferences": {"avoid_ferries": avoid_ferries, "avoid_tolls": avoid_tolls, "avoid_unpaved": avoid_unpaved},
-        "admin_area_policy": {"active": bool(admin_area_controls), "blocked_areas": sum(1 for x in admin_area_controls if x.get("effective_block")), "reasons": admin_area_reasons},
         "micro_candidates_checked": sum(1 for r in options if r.get("micro_route")),
         "saving_seconds": round(saving),
         "saving_minutes": max(1, round(saving/60)) if recommend else 0,
@@ -6576,11 +6423,7 @@ def api_route():
     except ValueError:
         variant_budget = 4
     user_nav = navigation_profile(session.get("user_id"), local_hour, travel_profile)
-    # Controles administrativos de bairro/área são independentes do perfil do usuário.
-    # Um bloqueio é forte, porém best-effort: nunca impede sair/chegar quando o ponto
-    # inicial ou final está dentro da própria área.
-    admin_area_controls, admin_area_exclusions, admin_area_reasons = admin_area_route_context(slat, slon, elat, elon)
-    # Rápida continua ETA-only para o Safety Engine, mas respeita bloqueios administrativos.
+    # Rápida is deliberately ETA-only. Profile/safety exclusions must not change its result.
     hard_exclusions, exclusion_reasons = (([], []) if fastest_mode else (professional_exclusion_points(slat, slon, elat, elon, local_hour) if user_nav["professional_driver"] else ([], [])))
 
     try:
@@ -6594,15 +6437,7 @@ def api_route():
         if is_motorized_profile(travel_profile) and avoid_unpaved:
             user_excludes.append("unpaved")
         extra_excludes = list(dict.fromkeys(motorcycle_excludes + professional_excludes + user_excludes)) or None
-        route_base_exclusions = list(admin_area_exclusions)
-        if user_nav["professional_driver"] and not fastest_mode:
-            route_base_exclusions.extend(hard_exclusions)
-        # De-duplica pontos próximos antes de enviar ao provedor.
-        dedup_admin = []
-        for point in route_base_exclusions:
-            if all(haversine_m(point[1], point[0], old[1], old[0]) > 110 for old in dedup_admin):
-                dedup_admin.append(point)
-        route_base_exclusions = dedup_admin[:18] or None
+        route_base_exclusions = hard_exclusions if (user_nav["professional_driver"] and not fastest_mode) else None
         route_extra_excludes = extra_excludes
         mapbox_base_count = 0
         if is_motorized_profile(travel_profile):
@@ -6633,7 +6468,7 @@ def api_route():
                 if fastest_mode:
                     # Fast mode also keeps the older ultra-small bypass generator;
                     # every exact-distinct candidate competes only on provider ETA.
-                    routes.extend(build_fast_micro_routes(routes, slon, slat, elon, elat, depart_at, extra_excludes=route_extra_excludes))
+                    routes.extend(build_fast_micro_routes(routes, slon, slat, elon, elat, depart_at))
                 exact = {}
                 for candidate in routes:
                     sig = route_signature(candidate) or f"anon-{id(candidate)}"
@@ -6646,17 +6481,22 @@ def api_route():
     if not routes:
         return jsonify({"error": "Nenhuma rota encontrada."}), 404
 
-    # Validação pós-provedor: mesmo com exclusão Mapbox best-effort, uma rota que
-    # ainda cruza uma área marcada como bloqueada é retirada quando há alternativa.
-    admin_area_fallback = False
-    if admin_area_controls:
-        for candidate in routes:
-            candidate["_admin_area_status"] = route_admin_area_status(candidate, admin_area_controls)
-        permitted = [r for r in routes if not (r.get("_admin_area_status") or {}).get("admin_area_blocked")]
-        if permitted:
-            routes = permitted
-        elif any((r.get("_admin_area_status") or {}).get("admin_area_blocked") for r in routes):
-            admin_area_fallback = True
+    # V81 — Admin-configured strong-avoid areas apply to every driving mode,
+    # including "Rápida". They are not demographic proxies: the admin must supply
+    # an operational risk reason/source. If every candidate intersects the area,
+    # routing remains possible and the zone continues as a strong risk penalty.
+    zone_bounds = _candidate_bounds(routes, slat, slon, elat, elon)
+    route_policy_zones = get_risk_zones_for_bounds(*zone_bounds)
+    block_points = admin_blocked_zone_points(route_policy_zones, slat, slon, elat, elon, local_hour)
+    if block_points and is_motorized_profile(travel_profile) and primary_provider == "mapbox":
+        try:
+            routes.extend(build_safety_bypass_routes(
+                routes, slon, slat, elon, elat, block_points, depart_at=depart_at,
+                budget=min(6, variant_budget + 2),
+            ))
+        except Exception:
+            app.logger.exception("Could not build admin-area bypass variants")
+    routes, admin_zone_policy = apply_admin_route_blocks(routes, route_policy_zones, slat, slon, elat, elon, local_hour)
 
     if fastest_mode:
         # Keep this path lean: no reports, risk zones, Safety Engine, user preference
@@ -6666,9 +6506,7 @@ def api_route():
         # block deviations. Diversity is a presentation concern, not a selector.
         raw_ranked = sorted(routes, key=lambda r: float(r.get("duration", 10**12)))[:12]
         for raw in raw_ranked:
-            item = fast_route_payload(raw, len(quick), travel_profile)
-            item.update(raw.get("_admin_area_status") or {})
-            quick.append(item)
+            quick.append(fast_route_payload(raw, len(quick), travel_profile))
         fastest = min(quick, key=lambda r: float(r.get("duration", 10**12)))
         baseline_non_micro = min([float(r.get("duration") or 10**12) for r in quick if not r.get("micro_route")] or [float(fastest.get("duration") or 0)])
         for r in quick:
@@ -6706,7 +6544,7 @@ def api_route():
             "micro_routing": is_motorized_profile(travel_profile),
             "adaptive_routing": {"enabled": bool(adaptive_requested), "diverse_candidates": len(quick), "variant_budget": variant_budget},
             "navigation_preferences": {"avoid_ferries": avoid_ferries, "avoid_tolls": avoid_tolls, "avoid_unpaved": avoid_unpaved},
-            "admin_area_policy": {"active": bool(admin_area_controls), "blocked_areas": sum(1 for x in admin_area_controls if x.get("effective_block")), "fallback": admin_area_fallback, "reasons": admin_area_reasons},
+            "admin_area_policy": admin_zone_policy,
             "fast_policy": {
                 "eta_only": True, "safety_engine_skipped": True, "profile_safety_skipped": True,
                 "traffic_aware": is_motorized_profile(travel_profile),
@@ -6729,7 +6567,7 @@ def api_route():
         pad = 0.015
         min_lat, max_lat = min(slat, elat)-pad, max(slat, elat)+pad; min_lon, max_lon = min(slon, elon)-pad, max(slon, elon)+pad
     reports = get_active_reports_for_bounds(min_lat, min_lon, max_lat, max_lon)
-    risk_zones = get_risk_zones_for_bounds(min_lat, min_lon, max_lat, max_lon)
+    risk_zones = route_policy_zones if route_policy_zones is not None else get_risk_zones_for_bounds(min_lat, min_lon, max_lat, max_lon)
 
     # Safest V4: expand the candidate pool around verified objective hazards. This
     # never uses neighborhood/favela labels or demographic proxies. The resulting
@@ -6780,7 +6618,6 @@ def api_route():
             traffic["traffic_level"] = traffic_level_from_score(traffic["traffic_score"])
         road = route_road_controls(route)
         professional = professional_route_assessment(route, metrics, road) if user_nav["professional_driver"] else {"professional_ok": True, "professional_flags": [], "exclusion_violations": []}
-        admin_area_status = route.get("_admin_area_status") or route_admin_area_status(route, admin_area_controls)
         enriched.append({
             "id": idx,
             "distance": route.get("distance", 0), "duration": route.get("duration", 0), "duration_min": round(float(route.get("duration", 0))/60, 1),
@@ -6798,7 +6635,7 @@ def api_route():
             "motorcycle_route": travel_profile == "motorcycle",
             "motorcycle_eta_policy": "conservative motorized ETA; no lane-splitting assumption" if travel_profile == "motorcycle" else "",
             "traffic_hotspots": (traffic.get("traffic_points") or [])[:6],
-            **metrics, **{k:v for k,v in traffic.items() if k != "traffic_points"}, **flow, **road, **professional, **admin_area_status,
+            **metrics, **{k:v for k,v in traffic.items() if k != "traffic_points"}, **flow, **road, **professional,
         })
 
     apply_route_intelligence(enriched, travel_profile, safety_bias=safety_bias, traffic_bias=traffic_bias)
@@ -6905,12 +6742,6 @@ def api_route():
             "night_safety_active": bool(user_nav["night_active"]),
             "route_preference": user_nav["route_preference"],
         },
-        "admin_area_policy": {
-            "active": bool(admin_area_controls),
-            "blocked_areas": sum(1 for x in admin_area_controls if x.get("effective_block")),
-            "fallback": bool(admin_area_fallback),
-            "reasons": admin_area_reasons,
-        },
         "professional_mode": {
             "strict": bool(user_nav["professional_driver"]),
             "fallback_required": bool(professional_fallback),
@@ -6939,22 +6770,16 @@ def api_route():
 
 @app.errorhandler(403)
 def forbidden(_e):
-    if request.path.startswith("/api/"):
-        return jsonify({"ok": False, "error": "Acesso negado."}), 403
     return render_template("error.html", code=403, title="Acesso negado", message="Você não tem permissão para acessar esta área."), 403
 
 
 @app.errorhandler(404)
 def not_found(_e):
-    if request.path.startswith("/api/"):
-        return jsonify({"ok": False, "error": "Recurso não encontrado."}), 404
     return render_template("error.html", code=404, title="Página não encontrada", message="O endereço solicitado não existe ou foi movido."), 404
 
 
 @app.errorhandler(500)
 def server_error(_e):
-    if request.path.startswith("/api/"):
-        return jsonify({"ok": False, "error": "Erro interno do servidor."}), 500
     return render_template("error.html", code=500, title="Erro interno", message="Algo inesperado aconteceu. Tente novamente."), 500
 
 
