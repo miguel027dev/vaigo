@@ -2,6 +2,7 @@
 {% block title %}Perfil · VAIGO{% endblock %}
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='vaigo-profile-v72.css') }}?v=72">
+<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-profile-v78.css') }}?v=78">
 {% endblock %}
 {% block content %}
 <main class="page v72-profile-page">
@@ -80,45 +81,23 @@
       </details>
 
       <details class="profile-v72-detail" id="appSettings">
-        <summary><span class="profile-v72-detail-icon"><i data-lucide="settings-2" width="18"></i></span><span class="profile-v72-detail-copy"><b>Preferências do aplicativo</b><small>Idioma, mapa e unidades</small></span><i class="profile-v72-chev" data-lucide="chevron-down" width="18"></i></summary>
+        <summary><span class="profile-v72-detail-icon"><i data-lucide="settings-2" width="18"></i></span><span class="profile-v72-detail-copy"><b>Preferências do aplicativo</b><small>Idioma, navegação e unidades</small></span><i class="profile-v72-chev" data-lucide="chevron-down" width="18"></i></summary>
         <div class="profile-v72-detail-body">
           <div class="profile-v72-grid-two profile-v72-grid-gap-top">
             <label class="profile-v72-field"><span>Idioma</span><select name="locale"><option value="pt-BR" {% if current_user['locale']=='pt-BR' %}selected{% endif %}>Português (Brasil)</option><option value="en-US" {% if current_user['locale']=='en-US' %}selected{% endif %}>English</option><option value="es-ES" {% if current_user['locale']=='es-ES' %}selected{% endif %}>Español</option></select></label>
             <label class="profile-v72-field"><span>Distância</span><select name="distance_unit"><option value="km" {% if current_user['distance_unit']!='mi' %}selected{% endif %}>Quilômetros</option><option value="mi" {% if current_user['distance_unit']=='mi' %}selected{% endif %}>Milhas</option></select></label>
           </div>
 
-          <div class="profile-v72-subsection profile-v72-grid-gap-top">
-            <div class="profile-v72-subhead"><span>NAVEGAÇÃO</span><b>O que evitar nas rotas</b></div>
-            <p class="profile-v72-subcopy">Essas preferências são aplicadas ao cálculo de rota sempre que o tipo de trajeto permitir.</p>
-            <div class="profile-v72-nav-prefs">
-              <label class="profile-v72-nav-pref"><span class="profile-v72-nav-icon"><i data-lucide="ship-wheel" width="17"></i></span><span class="profile-v72-nav-copy"><b>Evitar balsas</b><small>Prefere caminhos sem travessias por balsa.</small></span><input type="checkbox" name="avoid_ferries" value="1" {% if current_user['avoid_ferries'] %}checked{% endif %}><span class="profile-v72-switch" aria-hidden="true"></span></label>
-              <label class="profile-v72-nav-pref"><span class="profile-v72-nav-icon"><i data-lucide="badge-dollar-sign" width="17"></i></span><span class="profile-v72-nav-copy"><b>Evitar pedágios</b><small>Evita vias com cobrança quando houver alternativa.</small></span><input type="checkbox" name="avoid_tolls" value="1" {% if current_user['avoid_tolls'] %}checked{% endif %}><span class="profile-v72-switch" aria-hidden="true"></span></label>
-              <label class="profile-v72-nav-pref"><span class="profile-v72-nav-icon"><i data-lucide="construction" width="17"></i></span><span class="profile-v72-nav-copy"><b>Evitar vias não pavimentadas</b><small>Prefere ruas asfaltadas em rotas motorizadas.</small></span><input type="checkbox" name="avoid_unpaved" value="1" {% if current_user['avoid_unpaved'] %}checked{% endif %}><span class="profile-v72-switch" aria-hidden="true"></span></label>
+          <section class="profile-v78-route-prefs profile-v72-grid-gap-top" aria-labelledby="routeAvoidTitle">
+            <div class="profile-v78-route-head"><span>NAVEGAÇÃO</span><b id="routeAvoidTitle">O que evitar nas rotas</b><small>Escolha somente o que você realmente quer evitar. Cada opção funciona de forma independente.</small></div>
+            <div class="profile-v78-route-list">
+              <label class="profile-v78-route-row"><span class="profile-v78-route-icon"><i data-lucide="ship-wheel" width="18"></i></span><span class="profile-v78-route-copy"><b>Balsas</b><small>Prioriza caminhos sem travessias por balsa quando houver alternativa.</small></span><input type="checkbox" name="avoid_ferries" value="1" {% if current_user['avoid_ferries'] %}checked{% endif %}><span class="profile-v78-switch" aria-hidden="true"></span></label>
+              <label class="profile-v78-route-row"><span class="profile-v78-route-icon"><i data-lucide="badge-dollar-sign" width="18"></i></span><span class="profile-v78-route-copy"><b>Pedágios</b><small>Procura alternativas sem cobrança em trajetos motorizados.</small></span><input type="checkbox" name="avoid_tolls" value="1" {% if current_user['avoid_tolls'] %}checked{% endif %}><span class="profile-v78-switch" aria-hidden="true"></span></label>
+              <label class="profile-v78-route-row"><span class="profile-v78-route-icon"><i data-lucide="construction" width="18"></i></span><span class="profile-v78-route-copy"><b>Vias não pavimentadas</b><small>Prefere ruas pavimentadas sempre que o cálculo permitir.</small></span><input type="checkbox" name="avoid_unpaved" value="1" {% if current_user['avoid_unpaved'] %}checked{% endif %}><span class="profile-v78-switch" aria-hidden="true"></span></label>
             </div>
-          </div>
+          </section>
 
-          <div class="profile-v72-subsection profile-v72-grid-gap-top">
-            <div class="profile-v72-subhead"><span>MAPA</span><b>Tipo de mapa</b></div>
-            <p class="profile-v72-subcopy">Escolha um visual fixo ou deixe o VAIGO adaptar o mapa ao horário e ao clima.</p>
-            {% set style_pref = current_user['map_style'] or 'auto' %}
-            <div class="profile-v72-map-styles profile-v72-map-styles-five">
-              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="auto" {% if style_pref in ['auto','vivid','spark'] %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-auto"><i data-lucide="wand-sparkles" width="20"></i></span><span class="profile-v72-map-copy"><b>Automático</b><small>Dia, tarde, noite e chuva.</small><em>Selecionar</em></span></label>
-              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="day" {% if style_pref in ['day','standard','streets'] %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-day"><i data-lucide="sun" width="20"></i></span><span class="profile-v72-map-copy"><b>Dia</b><small>Claro e limpo.</small><em>Selecionar</em></span></label>
-              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="afternoon" {% if style_pref == 'afternoon' %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-afternoon"><i data-lucide="sunset" width="20"></i></span><span class="profile-v72-map-copy"><b>Tarde</b><small>Contraste quente.</small><em>Selecionar</em></span></label>
-              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="night" {% if style_pref == 'night' %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-night"><i data-lucide="moon-star" width="20"></i></span><span class="profile-v72-map-copy"><b>Escuro</b><small>Feito para a noite.</small><em>Selecionar</em></span></label>
-              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="rain" {% if style_pref == 'rain' %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-rain"><i data-lucide="cloud-rain" width="20"></i></span><span class="profile-v72-map-copy"><b>Chuva</b><small>Maior contraste em tempo fechado.</small><em>Selecionar</em></span></label>
-            </div>
-          </div>
 
-          <div class="profile-v72-subsection profile-v72-grid-gap-top">
-            <div class="profile-v72-subhead"><span>CORES</span><b>Cor da rota e dos destaques</b></div>
-            <div class="profile-v72-accent-options">
-              {% set accent_pref = current_user['map_accent'] or 'violet' %}
-              {% for accent,label,color in [('violet','Violeta','#5B5CE2'),('orange','Laranja','#F97316'),('blue','Azul','#2563EB'),('green','Verde','#059669'),('rose','Rosa','#E11D48')] %}
-              <label class="profile-v72-accent"><input type="radio" name="map_accent" value="{{ accent }}" {% if accent_pref == accent %}checked{% endif %}><span class="profile-v72-accent-dot" style="--accent-preview:{{ color }}"></span><span>{{ label }}</span></label>
-              {% endfor %}
-            </div>
-          </div>
         </div>
       </details>
 

@@ -2980,7 +2980,7 @@ def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walkin
     return routes
 
 
-def mapbox_routes_via(points, depart_at="now"):
+def mapbox_routes_via(points, depart_at="now", extra_excludes=None):
     """Recalcula o ETA de uma rota atual usando pontos silenciosos como guias do caminho."""
     clean = []
     for item in (points or [])[:8]:
@@ -3009,6 +3009,13 @@ def mapbox_routes_via(points, depart_at="now"):
         # Os pontos intermediários orientam o caminho sem criar chegadas/partidas artificiais.
         "waypoints": f"0;{len(clean)-1}",
     }
+    excludes = []
+    for value in (extra_excludes or []):
+        value = str(value or "").strip().lower()
+        if value in {"unpaved", "toll", "ferry", "motorway", "tunnel", "cash_only_tolls"} and value not in excludes:
+            excludes.append(value)
+    if excludes:
+        params["exclude"] = ",".join(excludes)
     try:
         data = mapbox_get(f"{MAPBOX_DIRECTIONS_URL}/driving-traffic/{coords}", params, timeout=18)
         used = "driving-traffic"
@@ -3480,7 +3487,7 @@ def traffic_hotspot_clusters(route, max_clusters=6):
     return out[:max_clusters]
 
 
-def build_fast_micro_routes(base_routes, start_lon, start_lat, end_lon, end_lat, depart_at="now"):
+def build_fast_micro_routes(base_routes, start_lon, start_lat, end_lon, end_lat, depart_at="now", extra_excludes=None):
     """Generate ETA-only block bypasses in parallel around live congestion.
 
     Important: fastest mode never consults the Safety Engine. The provider ETA is
@@ -3513,7 +3520,7 @@ def build_fast_micro_routes(base_routes, start_lon, start_lat, end_lon, end_lat,
         try:
             found = mapbox_routes(
                 start_lon, start_lat, end_lon, end_lat, "driving", depart_at,
-                exclusions=spec["points"], alternatives=False, extra_excludes=None,
+                exclusions=spec["points"], alternatives=False, extra_excludes=extra_excludes,
             )
             if not found:
                 return None
@@ -4886,10 +4893,12 @@ def profile():
         can_publish_presence = bool(user and int(user["is_app_driver"] or 0) == 1 and int(user["age"] or 0) >= 18 and user["presence_terms_accepted_at"])
         presence_visible = 1 if visibility and can_publish_presence else 0
         networks = [x.strip()[:40] for x in request.form.getlist("fuel_networks") if x.strip()][:12]
-        map_style = (request.form.get("map_style") or "auto").strip().lower()
+        # Map appearance controls are currently hidden from Settings. Preserve the
+        # user's stored values instead of resetting them whenever the form is saved.
+        map_style = ((request.form.get("map_style") if "map_style" in request.form else (user["map_style"] if user else "auto")) or "auto").strip().lower()
         if map_style not in {"auto", "day", "afternoon", "night", "rain"}:
             map_style = "auto"
-        map_accent = (request.form.get("map_accent") or "violet").strip().lower()
+        map_accent = ((request.form.get("map_accent") if "map_accent" in request.form else (user["map_accent"] if user else "violet")) or "violet").strip().lower()
         if map_accent not in MAPBOX_ACCENT_PRESETS:
             map_accent = "violet"
         avoid_ferries = 1 if request.form.get("avoid_ferries") == "1" else 0
@@ -5840,8 +5849,35 @@ def traffic_recommendation():
     travel_profile = str(payload.get("profile") or "driving").strip().lower()
     if travel_profile not in {"driving", "motorcycle"}:
         travel_profile = "driving"
+    trigger_reason = str(payload.get("trigger_reason") or "periodic").strip().lower()[:40]
+    if trigger_reason not in {"periodic", "startup", "stopped_60s", "abrupt_slowdown", "manual"}:
+        trigger_reason = "periodic"
+    try:
+        lookahead_m = int(clamp(float(payload.get("lookahead_m", 5000)), 1200, 5000))
+    except Exception:
+        lookahead_m = 5000
     user_nav = navigation_profile(session.get("user_id"), local_hour, travel_profile)
-    route_extra_excludes = ["unpaved"] if (travel_profile == "motorcycle" or user_nav["professional_driver"]) else None
+    pref_payload = payload.get("navigation_preferences") if isinstance(payload.get("navigation_preferences"), dict) else {}
+    avoid_ferries = bool(pref_payload.get("avoid_ferries"))
+    avoid_tolls = bool(pref_payload.get("avoid_tolls"))
+    avoid_unpaved = bool(pref_payload.get("avoid_unpaved"))
+    if session.get("user_id"):
+        try:
+            pref_row = get_db().execute("SELECT avoid_ferries,avoid_tolls,avoid_unpaved FROM users WHERE id=?", (int(session["user_id"]),)).fetchone()
+            if pref_row:
+                avoid_ferries = bool(pref_row["avoid_ferries"])
+                avoid_tolls = bool(pref_row["avoid_tolls"])
+                avoid_unpaved = bool(pref_row["avoid_unpaved"])
+        except Exception:
+            pass
+    route_extra_excludes = []
+    if avoid_ferries:
+        route_extra_excludes.append("ferry")
+    if avoid_tolls:
+        route_extra_excludes.append("toll")
+    if avoid_unpaved or travel_profile == "motorcycle" or user_nav["professional_driver"]:
+        route_extra_excludes.append("unpaved")
+    route_extra_excludes = route_extra_excludes or None
     pro_exclusions, pro_exclusion_reasons = (([], []) if fast_eta_only else (professional_exclusion_points(clat, clon, dlat, dlon, local_hour) if user_nav["professional_driver"] else ([], [])))
     future = []
     for point in (payload.get("future_points") or [])[:4]:
@@ -5856,13 +5892,13 @@ def traffic_recommendation():
         try:
             # Fresh Mapbox traffic-aware alternatives from the current GPS position,
             # expanded by Spark with nearby block/corridor micro-variants.
-            baseline_raw = mapbox_routes_via(forced_points, "now")
+            baseline_raw = mapbox_routes_via(forced_points, "now", extra_excludes=route_extra_excludes)
             base_routes = mapbox_routes(clon, clat, dlon, dlat, travel_profile, "now", alternatives=True, extra_excludes=route_extra_excludes)
             if not base_routes:
                 raise RuntimeError("Nenhuma rota de trânsito disponível")
             base_routes = ensure_adaptive_route_pool(base_routes, clon, clat, dlon, dlat, "now", target=6, budget=6)
             dense_micro = build_dense_micro_route_pool(base_routes, clon, clat, dlon, dlat, "now", budget=10)
-            micro = build_fast_micro_routes(base_routes + dense_micro, clon, clat, dlon, dlat, "now")
+            micro = build_fast_micro_routes(base_routes + dense_micro, clon, clat, dlon, dlat, "now", extra_excludes=route_extra_excludes)
             raw_candidates = select_diverse_routes(base_routes + dense_micro + micro, max_routes=13, max_overlap=.985, sort_key=lambda r: float(r.get("duration", 10**12)))
             candidates = [fast_route_payload(raw, idx, travel_profile) for idx, raw in enumerate(raw_candidates)]
             baseline = fast_route_payload(baseline_raw, 999, travel_profile)
@@ -5870,10 +5906,14 @@ def traffic_recommendation():
             base_s = float(baseline.get("duration") or 0)
             best_s = float(best.get("duration") or base_s)
             saving = max(0.0, base_s - best_s)
-            traffic_detected = bool(float(baseline.get("traffic_score") or 0) >= 35 or int(baseline.get("severe_segments") or 0) > 0)
+            motion_triggered = trigger_reason in {"stopped_60s", "abrupt_slowdown"}
+            fast_corridors = [x for x in (baseline.get("traffic_corridors") or []) if float(x.get("distance_start_m") or 0) <= lookahead_m]
+            corridor_peak = max([float(x.get("score") or 0) for x in fast_corridors] + [0.0])
+            corridor_severe = sum(1 for x in fast_corridors if float(x.get("score") or 0) >= 74)
+            traffic_detected = bool((corridor_peak >= 35 or corridor_severe > 0) if motion_triggered else (float(baseline.get("traffic_score") or 0) >= 35 or int(baseline.get("severe_segments") or 0) > 0))
             # Fast mode can suggest even modest improvements; ETA is the only objective.
             threshold = max(20.0, min(75.0, base_s * .018))
-            recommend = bool(best and route_overlap_ratio(best, baseline) < .95 and saving >= threshold)
+            recommend = bool(best and traffic_detected and route_overlap_ratio(best, baseline) < .95 and saving >= threshold)
             return jsonify({
                 "traffic_detected": traffic_detected, "mapped_road_detected": False,
                 "traffic_level": baseline.get("traffic_level", "Sem dados"),
@@ -5884,7 +5924,10 @@ def traffic_recommendation():
                 "baseline_duration": base_s, "recommend": recommend,
                 "saving_seconds": round(saving), "saving_minutes": max(1, round(saving/60)) if recommend else 0,
                 "fast_eta_only": True,
-                "auto_apply": bool(recommend and best and best.get("micro_route")),
+                "trigger_reason": trigger_reason, "lookahead_m": lookahead_m,
+                "corridor_peak_score": round(corridor_peak, 1),
+                "navigation_preferences": {"avoid_ferries": avoid_ferries, "avoid_tolls": avoid_tolls, "avoid_unpaved": avoid_unpaved},
+                "auto_apply": False if motion_triggered else bool(recommend and best and best.get("micro_route")),
                 "suggestion": {"route": best, "kind": "micro" if best and best.get("micro_route") else "alternative"} if recommend else None,
                 "message": (f"Rota mais rápida encontrada: economiza cerca de {max(1,round(saving/60))} min." if recommend else ("Trânsito detectado; nenhuma alternativa ficou realmente mais rápida agora." if traffic_detected else "Fluxo sem ganho de ETA relevante em outra rota.")),
             })
@@ -5892,7 +5935,7 @@ def traffic_recommendation():
             return jsonify({"error": "Não foi possível atualizar a rota rápida agora.", "detail": str(exc)}), 502
 
     try:
-        baseline = mapbox_routes_via(forced_points, "now") if len(forced_points) >= 2 else mapbox_routes(clon, clat, dlon, dlat, travel_profile, "now", alternatives=False, extra_excludes=route_extra_excludes)[0]
+        baseline = mapbox_routes_via(forced_points, "now", extra_excludes=route_extra_excludes) if len(forced_points) >= 2 else mapbox_routes(clon, clat, dlon, dlat, travel_profile, "now", alternatives=False, extra_excludes=route_extra_excludes)[0]
         alternatives = mapbox_routes(
             clon, clat, dlon, dlat, travel_profile, "now",
             exclusions=pro_exclusions if user_nav["professional_driver"] else None,
@@ -6016,8 +6059,13 @@ def traffic_recommendation():
     # Avoid noisy reroutes: normal congestion needs ~2 min improvement. Severe
     # congestion/closures can justify a smaller but still meaningful safe detour.
     threshold=max(120.0, min(240.0, base_s*0.055))
-    traffic_detected=bool(float(base.get("traffic_score",0)) >= 42 or int(base.get("severe_segments",0)) > 0)
-    severe_traffic=bool(float(base.get("traffic_score",0)) >= 74 or int(base.get("severe_segments",0)) >= 2)
+    motion_triggered = trigger_reason in {"stopped_60s", "abrupt_slowdown"}
+    corridor_hotspots = [x for x in (base.get("traffic_corridors") or []) if float(x.get("distance_start_m") or 0) <= lookahead_m]
+    corridor_peak = max([float(x.get("score") or 0) for x in corridor_hotspots] + [0.0])
+    corridor_severe_count = sum(1 for x in corridor_hotspots if float(x.get("score") or 0) >= 74)
+    corridor_delay_s = sum(max(0.0, float(x.get("delay_s") or 0)) for x in corridor_hotspots)
+    traffic_detected=bool((corridor_peak >= 42 or corridor_severe_count > 0) if motion_triggered else (float(base.get("traffic_score",0)) >= 42 or int(base.get("severe_segments",0)) > 0))
+    severe_traffic=bool((corridor_peak >= 74 or corridor_severe_count >= 2) if motion_triggered else (float(base.get("traffic_score",0)) >= 74 or int(base.get("severe_segments",0)) >= 2))
     closure_detected=bool(int(base.get("closures_count",0) or 0)>0)
     mapped_road_detected=bool(locals().get("mapped_avoid"))
     # Se houver obstáculo viário mapeado sobre o corredor, uma alternativa pode ser
@@ -6025,7 +6073,7 @@ def traffic_recommendation():
     # e a um detour pequeno. Como OSM não é um feed instantâneo, a UI informa isso.
     road_benefit=bool(best and int(best.get("live_road_avoided",0) or 0)>0 and float(best.get("duration") or 1e12) <= base_s*1.08)
     recommend=bool(best and ((traffic_detected and saving >= threshold) or (severe_traffic and saving >= 60.0) or closure_detected or (mapped_road_detected and road_benefit)))
-    auto_apply=bool(recommend and best and best.get("micro_route") and route_mode=="smart" and (saving>=30.0 or severe_traffic or closure_detected or (float(best.get("micro_traffic_relief") or 0)>=10 and float(best.get("duration") or 1e12)<=base_s*1.03)))
+    auto_apply=bool((not motion_triggered) and recommend and best and best.get("micro_route") and route_mode=="smart" and (saving>=30.0 or severe_traffic or closure_detected or (float(best.get("micro_traffic_relief") or 0)>=10 and float(best.get("duration") or 1e12)<=base_s*1.03)))
     return jsonify({
         "traffic_detected": traffic_detected,
         "severe_traffic": severe_traffic,
@@ -6038,11 +6086,16 @@ def traffic_recommendation():
         "traffic_level": base.get("traffic_level","Sem dados"),
         "traffic_score": base.get("traffic_score",0),
         "congested_distance_km": base.get("congested_distance_km",0),
-        "hotspots": (base.get("traffic_corridors") or [])[:8],
-        "traffic_delay_min": base.get("traffic_delay_min",0),
+        "hotspots": (corridor_hotspots if motion_triggered else (base.get("traffic_corridors") or []))[:8],
+        "traffic_delay_min": round(corridor_delay_s/60.0, 1) if motion_triggered else base.get("traffic_delay_min",0),
         "baseline_duration": base_s,
         "recommend": recommend,
         "auto_apply": auto_apply,
+        "trigger_reason": trigger_reason,
+        "lookahead_m": lookahead_m,
+        "corridor_peak_score": round(corridor_peak, 1),
+        "corridor_severe_segments": corridor_severe_count,
+        "navigation_preferences": {"avoid_ferries": avoid_ferries, "avoid_tolls": avoid_tolls, "avoid_unpaved": avoid_unpaved},
         "micro_candidates_checked": sum(1 for r in options if r.get("micro_route")),
         "saving_seconds": round(saving),
         "saving_minutes": max(1, round(saving/60)) if recommend else 0,
@@ -6277,7 +6330,7 @@ def api_route():
                 if fastest_mode:
                     # Fast mode also keeps the older ultra-small bypass generator;
                     # every exact-distinct candidate competes only on provider ETA.
-                    routes.extend(build_fast_micro_routes(routes, slon, slat, elon, elat, depart_at))
+                    routes.extend(build_fast_micro_routes(routes, slon, slat, elon, elat, depart_at, extra_excludes=route_extra_excludes))
                 exact = {}
                 for candidate in routes:
                     sig = route_signature(candidate) or f"anon-{id(candidate)}"
