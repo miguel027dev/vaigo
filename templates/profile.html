@@ -88,10 +88,35 @@
           </div>
 
           <div class="profile-v72-subsection profile-v72-grid-gap-top">
-            <div class="profile-v72-subhead"><span>MAPA</span><b>Estilo visual</b></div>
-            <div class="profile-v72-map-styles">
-              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="vivid" {% if current_user['map_style'] not in ['standard','streets'] %}checked{% endif %}><span class="profile-v72-map-preview"><img src="{{ url_for('static',filename='previews/map-vivid.svg') }}" alt="Prévia do mapa adaptativo"></span><span class="profile-v72-map-copy"><b>Adaptativo</b><small>Acompanha o período do dia.</small><em>Selecionar</em></span></label>
-              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="standard" {% if current_user['map_style'] in ['standard','streets'] %}checked{% endif %}><span class="profile-v72-map-preview"><img src="{{ url_for('static',filename='previews/map-standard.svg') }}" alt="Prévia do mapa padrão"></span><span class="profile-v72-map-copy"><b>Standard</b><small>Visual fixo e consistente.</small><em>Selecionar</em></span></label>
+            <div class="profile-v72-subhead"><span>NAVEGAÇÃO</span><b>O que evitar nas rotas</b></div>
+            <p class="profile-v72-subcopy">Essas preferências são aplicadas ao cálculo de rota sempre que o tipo de trajeto permitir.</p>
+            <div class="profile-v72-nav-prefs">
+              <label class="profile-v72-nav-pref"><span class="profile-v72-nav-icon"><i data-lucide="ship-wheel" width="17"></i></span><span class="profile-v72-nav-copy"><b>Evitar balsas</b><small>Prefere caminhos sem travessias por balsa.</small></span><input type="checkbox" name="avoid_ferries" value="1" {% if current_user['avoid_ferries'] %}checked{% endif %}><span class="profile-v72-switch" aria-hidden="true"></span></label>
+              <label class="profile-v72-nav-pref"><span class="profile-v72-nav-icon"><i data-lucide="badge-dollar-sign" width="17"></i></span><span class="profile-v72-nav-copy"><b>Evitar pedágios</b><small>Evita vias com cobrança quando houver alternativa.</small></span><input type="checkbox" name="avoid_tolls" value="1" {% if current_user['avoid_tolls'] %}checked{% endif %}><span class="profile-v72-switch" aria-hidden="true"></span></label>
+              <label class="profile-v72-nav-pref"><span class="profile-v72-nav-icon"><i data-lucide="construction" width="17"></i></span><span class="profile-v72-nav-copy"><b>Evitar vias não pavimentadas</b><small>Prefere ruas asfaltadas em rotas motorizadas.</small></span><input type="checkbox" name="avoid_unpaved" value="1" {% if current_user['avoid_unpaved'] %}checked{% endif %}><span class="profile-v72-switch" aria-hidden="true"></span></label>
+            </div>
+          </div>
+
+          <div class="profile-v72-subsection profile-v72-grid-gap-top">
+            <div class="profile-v72-subhead"><span>MAPA</span><b>Tipo de mapa</b></div>
+            <p class="profile-v72-subcopy">Escolha um visual fixo ou deixe o VAIGO adaptar o mapa ao horário e ao clima.</p>
+            {% set style_pref = current_user['map_style'] or 'auto' %}
+            <div class="profile-v72-map-styles profile-v72-map-styles-five">
+              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="auto" {% if style_pref in ['auto','vivid','spark'] %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-auto"><i data-lucide="wand-sparkles" width="20"></i></span><span class="profile-v72-map-copy"><b>Automático</b><small>Dia, tarde, noite e chuva.</small><em>Selecionar</em></span></label>
+              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="day" {% if style_pref in ['day','standard','streets'] %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-day"><i data-lucide="sun" width="20"></i></span><span class="profile-v72-map-copy"><b>Dia</b><small>Claro e limpo.</small><em>Selecionar</em></span></label>
+              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="afternoon" {% if style_pref == 'afternoon' %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-afternoon"><i data-lucide="sunset" width="20"></i></span><span class="profile-v72-map-copy"><b>Tarde</b><small>Contraste quente.</small><em>Selecionar</em></span></label>
+              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="night" {% if style_pref == 'night' %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-night"><i data-lucide="moon-star" width="20"></i></span><span class="profile-v72-map-copy"><b>Escuro</b><small>Feito para a noite.</small><em>Selecionar</em></span></label>
+              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="rain" {% if style_pref == 'rain' %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-rain"><i data-lucide="cloud-rain" width="20"></i></span><span class="profile-v72-map-copy"><b>Chuva</b><small>Maior contraste em tempo fechado.</small><em>Selecionar</em></span></label>
+            </div>
+          </div>
+
+          <div class="profile-v72-subsection profile-v72-grid-gap-top">
+            <div class="profile-v72-subhead"><span>CORES</span><b>Cor da rota e dos destaques</b></div>
+            <div class="profile-v72-accent-options">
+              {% set accent_pref = current_user['map_accent'] or 'violet' %}
+              {% for accent,label,color in [('violet','Violeta','#5B5CE2'),('orange','Laranja','#F97316'),('blue','Azul','#2563EB'),('green','Verde','#059669'),('rose','Rosa','#E11D48')] %}
+              <label class="profile-v72-accent"><input type="radio" name="map_accent" value="{{ accent }}" {% if accent_pref == accent %}checked{% endif %}><span class="profile-v72-accent-dot" style="--accent-preview:{{ color }}"></span><span>{{ label }}</span></label>
+              {% endfor %}
             </div>
           </div>
         </div>

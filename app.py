@@ -65,6 +65,38 @@ MAPBOX_STYLE_DAY = os.environ.get("MAPBOX_STYLE_DAY", MAPBOX_STYLE or "mapbox://
 MAPBOX_STYLE_AFTERNOON = os.environ.get("MAPBOX_STYLE_AFTERNOON", "mapbox://styles/miguwl0287/cmixney1h001501s111340npb").strip()
 MAPBOX_STYLE_NIGHT = os.environ.get("MAPBOX_STYLE_NIGHT", "mapbox://styles/miguwl0287/cmiwm8kse007v01s023vnadqb").strip()
 MAPBOX_STYLE_RAIN = os.environ.get("MAPBOX_STYLE_RAIN", "mapbox://styles/miguwl0287/cmszu604f001x01rw8gcyh06b").strip()
+
+def _map_color_env(name, fallback):
+    value = os.environ.get(name, fallback).strip()
+    return value if re.fullmatch(r"#[0-9A-Fa-f]{6}", value or "") else fallback
+
+MAPBOX_ACCENT_PRESETS = {
+    "violet": {
+        "primary": _map_color_env("MAPBOX_ACCENT_VIOLET", "#5B5CE2"),
+        "light": _map_color_env("MAPBOX_ACCENT_VIOLET_LIGHT", "#8587F4"),
+        "alt": _map_color_env("MAPBOX_ACCENT_VIOLET_ALT", "#A8A9F8"),
+    },
+    "orange": {
+        "primary": _map_color_env("MAPBOX_ACCENT_ORANGE", "#F97316"),
+        "light": _map_color_env("MAPBOX_ACCENT_ORANGE_LIGHT", "#FB923C"),
+        "alt": _map_color_env("MAPBOX_ACCENT_ORANGE_ALT", "#FDBA74"),
+    },
+    "blue": {
+        "primary": _map_color_env("MAPBOX_ACCENT_BLUE", "#2563EB"),
+        "light": _map_color_env("MAPBOX_ACCENT_BLUE_LIGHT", "#60A5FA"),
+        "alt": _map_color_env("MAPBOX_ACCENT_BLUE_ALT", "#93C5FD"),
+    },
+    "green": {
+        "primary": _map_color_env("MAPBOX_ACCENT_GREEN", "#059669"),
+        "light": _map_color_env("MAPBOX_ACCENT_GREEN_LIGHT", "#34D399"),
+        "alt": _map_color_env("MAPBOX_ACCENT_GREEN_ALT", "#6EE7B7"),
+    },
+    "rose": {
+        "primary": _map_color_env("MAPBOX_ACCENT_ROSE", "#E11D48"),
+        "light": _map_color_env("MAPBOX_ACCENT_ROSE_LIGHT", "#FB7185"),
+        "alt": _map_color_env("MAPBOX_ACCENT_ROSE_ALT", "#FDA4AF"),
+    },
+}
 MAPBOX_GEOCODING_URL = "https://api.mapbox.com/search/geocode/v6"
 MAPBOX_SEARCHBOX_URL = "https://api.mapbox.com/search/searchbox/v1"
 BRASILAPI_CEP_URL = "https://brasilapi.com.br/api/cep/v2"
@@ -323,7 +355,11 @@ def init_db():
             presence_terms_accepted_at TEXT,
             emergency_name TEXT NOT NULL DEFAULT '',
             emergency_phone TEXT NOT NULL DEFAULT '',
-            map_style TEXT NOT NULL DEFAULT 'vivid'
+            map_style TEXT NOT NULL DEFAULT 'auto',
+            map_accent TEXT NOT NULL DEFAULT 'violet',
+            avoid_ferries INTEGER NOT NULL DEFAULT 0,
+            avoid_tolls INTEGER NOT NULL DEFAULT 0,
+            avoid_unpaved INTEGER NOT NULL DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS auth_sessions (
@@ -608,7 +644,15 @@ def init_db():
     if "emergency_phone" not in user_columns:
         db.execute("ALTER TABLE users ADD COLUMN emergency_phone TEXT NOT NULL DEFAULT ''")
     if "map_style" not in user_columns:
-        db.execute("ALTER TABLE users ADD COLUMN map_style TEXT NOT NULL DEFAULT 'spark'")
+        db.execute("ALTER TABLE users ADD COLUMN map_style TEXT NOT NULL DEFAULT 'auto'")
+    if "map_accent" not in user_columns:
+        db.execute("ALTER TABLE users ADD COLUMN map_accent TEXT NOT NULL DEFAULT 'violet'")
+    if "avoid_ferries" not in user_columns:
+        db.execute("ALTER TABLE users ADD COLUMN avoid_ferries INTEGER NOT NULL DEFAULT 0")
+    if "avoid_tolls" not in user_columns:
+        db.execute("ALTER TABLE users ADD COLUMN avoid_tolls INTEGER NOT NULL DEFAULT 0")
+    if "avoid_unpaved" not in user_columns:
+        db.execute("ALTER TABLE users ADD COLUMN avoid_unpaved INTEGER NOT NULL DEFAULT 0")
     db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL")
 
     oauth_columns = {row[1] for row in db.execute("PRAGMA table_info(oauth_states)").fetchall()}
@@ -852,14 +896,14 @@ def current_user():
         return None
     db = get_db()
     row = db.execute(
-        "SELECT id,name,email,role,locale,is_active,created_at,last_login_at,google_sub,avatar_url,auth_provider,age,sex,is_app_driver,night_safety_mode,route_preference,onboarding_completed_at,distance_unit,vehicle_make,vehicle_model,vehicle_plate,vehicle_year,preferred_fuel_networks,home_label,work_label,presence_visible,presence_terms_accepted_at,emergency_name,emergency_phone,map_style FROM users WHERE id = ?",
+        "SELECT id,name,email,role,locale,is_active,created_at,last_login_at,google_sub,avatar_url,auth_provider,age,sex,is_app_driver,night_safety_mode,route_preference,onboarding_completed_at,distance_unit,vehicle_make,vehicle_model,vehicle_plate,vehicle_year,preferred_fuel_networks,home_label,work_label,presence_visible,presence_terms_accepted_at,emergency_name,emergency_phone,map_style,map_accent,avoid_ferries,avoid_tolls,avoid_unpaved FROM users WHERE id = ?",
         (uid,),
     ).fetchone()
     if row and is_admin_email(row["email"]) and row["role"] != "admin":
         db.execute("UPDATE users SET role='admin' WHERE id=?", (uid,))
         db.commit()
         row = db.execute(
-            "SELECT id,name,email,role,locale,is_active,created_at,last_login_at,google_sub,avatar_url,auth_provider,age,sex,is_app_driver,night_safety_mode,route_preference,onboarding_completed_at,distance_unit,vehicle_make,vehicle_model,vehicle_plate,vehicle_year,preferred_fuel_networks,home_label,work_label,presence_visible,presence_terms_accepted_at,emergency_name,emergency_phone,map_style FROM users WHERE id = ?",
+            "SELECT id,name,email,role,locale,is_active,created_at,last_login_at,google_sub,avatar_url,auth_provider,age,sex,is_app_driver,night_safety_mode,route_preference,onboarding_completed_at,distance_unit,vehicle_make,vehicle_model,vehicle_plate,vehicle_year,preferred_fuel_networks,home_label,work_label,presence_visible,presence_terms_accepted_at,emergency_name,emergency_phone,map_style,map_accent,avoid_ferries,avoid_tolls,avoid_unpaved FROM users WHERE id = ?",
             (uid,),
         ).fetchone()
     return row
@@ -4313,13 +4357,22 @@ def index():
         "SELECT (SELECT COUNT(*) FROM users WHERE is_active=1) users, (SELECT COUNT(*) FROM reports WHERE status='active') alerts"
     ).fetchone()
     user = current_user()
-    map_style_pref = (user["map_style"] if user and "map_style" in user.keys() else "standard") or "standard"
-    # V49 defaults to Mapbox Standard for a brighter, calmer visual system.
-    # Legacy automatic/dark values migrate to Standard unless the user later
-    # chooses another map treatment in settings.
-    if map_style_pref in {"spark", "vivid", "streets"}:
-        map_style_pref = "standard"
-    selected_map_style = MAPBOX_STYLE_DAY
+    map_style_pref = (user["map_style"] if user and "map_style" in user.keys() else "auto") or "auto"
+    # Normalize legacy values without destroying the user's new explicit choice.
+    if map_style_pref in {"spark", "vivid"}:
+        map_style_pref = "auto"
+    elif map_style_pref in {"standard", "streets"}:
+        map_style_pref = "day"
+    if map_style_pref not in {"auto", "day", "afternoon", "night", "rain"}:
+        map_style_pref = "auto"
+    style_lookup = {
+        "day": MAPBOX_STYLE_DAY, "afternoon": MAPBOX_STYLE_AFTERNOON,
+        "night": MAPBOX_STYLE_NIGHT, "rain": MAPBOX_STYLE_RAIN,
+    }
+    selected_map_style = style_lookup.get(map_style_pref, MAPBOX_STYLE_DAY)
+    map_accent_pref = (user["map_accent"] if user and "map_accent" in user.keys() else "violet") or "violet"
+    if map_accent_pref not in MAPBOX_ACCENT_PRESETS:
+        map_accent_pref = "violet"
     return render_template(
         "index.html",
         stats=stats,
@@ -4332,6 +4385,13 @@ def index():
             "rain": MAPBOX_STYLE_RAIN,
         },
         map_style_mode=map_style_pref,
+        map_accent=map_accent_pref,
+        map_accent_colors=MAPBOX_ACCENT_PRESETS[map_accent_pref],
+        nav_preferences={
+            "avoid_ferries": bool(user and user["avoid_ferries"]),
+            "avoid_tolls": bool(user and user["avoid_tolls"]),
+            "avoid_unpaved": bool(user and user["avoid_unpaved"]),
+        },
         mapbox_ready=mapbox_ready(),
         categories=CATEGORY_META,
         guest_route_limit=GUEST_ROUTE_LIMIT,
@@ -4826,13 +4886,19 @@ def profile():
         can_publish_presence = bool(user and int(user["is_app_driver"] or 0) == 1 and int(user["age"] or 0) >= 18 and user["presence_terms_accepted_at"])
         presence_visible = 1 if visibility and can_publish_presence else 0
         networks = [x.strip()[:40] for x in request.form.getlist("fuel_networks") if x.strip()][:12]
-        map_style = (request.form.get("map_style") or "vivid").strip()
-        if map_style not in {"vivid", "standard"}:
-            map_style = "vivid"
+        map_style = (request.form.get("map_style") or "auto").strip().lower()
+        if map_style not in {"auto", "day", "afternoon", "night", "rain"}:
+            map_style = "auto"
+        map_accent = (request.form.get("map_accent") or "violet").strip().lower()
+        if map_accent not in MAPBOX_ACCENT_PRESETS:
+            map_accent = "violet"
+        avoid_ferries = 1 if request.form.get("avoid_ferries") == "1" else 0
+        avoid_tolls = 1 if request.form.get("avoid_tolls") == "1" else 0
+        avoid_unpaved = 1 if request.form.get("avoid_unpaved") == "1" else 0
         emergency_name = (request.form.get("emergency_name") or "").strip()[:80]
         emergency_phone = re.sub(r"[^0-9+() -]", "", (request.form.get("emergency_phone") or "").strip())[:30]
         db.execute(
-            """UPDATE users SET locale=?,distance_unit=?,vehicle_make=?,vehicle_model=?,vehicle_plate=?,vehicle_year=?,preferred_fuel_networks=?,home_label=?,work_label=?,presence_visible=?,emergency_name=?,emergency_phone=?,map_style=? WHERE id=?""",
+            """UPDATE users SET locale=?,distance_unit=?,vehicle_make=?,vehicle_model=?,vehicle_plate=?,vehicle_year=?,preferred_fuel_networks=?,home_label=?,work_label=?,presence_visible=?,emergency_name=?,emergency_phone=?,map_style=?,map_accent=?,avoid_ferries=?,avoid_tolls=?,avoid_unpaved=? WHERE id=?""",
             (
                 locale, distance_unit,
                 (request.form.get("vehicle_make") or "").strip()[:60],
@@ -4842,7 +4908,8 @@ def profile():
                 json.dumps(networks, ensure_ascii=False),
                 (request.form.get("home_label") or "").strip()[:220],
                 (request.form.get("work_label") or "").strip()[:220],
-                presence_visible, emergency_name, emergency_phone, map_style, session["user_id"],
+                presence_visible, emergency_name, emergency_phone, map_style, map_accent,
+                avoid_ferries, avoid_tolls, avoid_unpaved, session["user_id"],
             ),
         )
         if not presence_visible:
@@ -6156,6 +6223,10 @@ def api_route():
         mode = "safest"
     fastest_mode = mode == "fastest"
     adaptive_requested = str(request.args.get("adaptive", "1")).lower() not in {"0","false","off","no"}
+    truthy = {"1", "true", "on", "yes"}
+    avoid_ferries = str(request.args.get("avoid_ferries", "0")).strip().lower() in truthy
+    avoid_tolls = str(request.args.get("avoid_tolls", "0")).strip().lower() in truthy
+    avoid_unpaved = str(request.args.get("avoid_unpaved", "0")).strip().lower() in truthy
     try:
         variant_budget = max(2, min(8, int(request.args.get("variant_budget", "5"))))
     except ValueError:
@@ -6167,7 +6238,14 @@ def api_route():
     try:
         motorcycle_excludes = ["unpaved"] if travel_profile == "motorcycle" else []
         professional_excludes = ["unpaved"] if (user_nav["professional_driver"] and not fastest_mode) else []
-        extra_excludes = list(dict.fromkeys(motorcycle_excludes + professional_excludes)) or None
+        user_excludes = []
+        if avoid_ferries:
+            user_excludes.append("ferry")
+        if is_motorized_profile(travel_profile) and avoid_tolls:
+            user_excludes.append("toll")
+        if is_motorized_profile(travel_profile) and avoid_unpaved:
+            user_excludes.append("unpaved")
+        extra_excludes = list(dict.fromkeys(motorcycle_excludes + professional_excludes + user_excludes)) or None
         route_base_exclusions = hard_exclusions if (user_nav["professional_driver"] and not fastest_mode) else None
         route_extra_excludes = extra_excludes
         mapbox_base_count = 0
@@ -6257,6 +6335,7 @@ def api_route():
             "candidate_source": primary_provider, "mapbox_base_candidates": int(mapbox_base_count or 0),
             "micro_routing": is_motorized_profile(travel_profile),
             "adaptive_routing": {"enabled": bool(adaptive_requested), "diverse_candidates": len(quick), "variant_budget": variant_budget},
+            "navigation_preferences": {"avoid_ferries": avoid_ferries, "avoid_tolls": avoid_tolls, "avoid_unpaved": avoid_unpaved},
             "fast_policy": {
                 "eta_only": True, "safety_engine_skipped": True, "profile_safety_skipped": True,
                 "traffic_aware": is_motorized_profile(travel_profile),
@@ -6465,7 +6544,8 @@ def api_route():
         "motorcycle_routing": {
             "enabled": travel_profile == "motorcycle",
             "provider_graph": "mapbox-driving-traffic",
-            "avoid_unpaved": travel_profile == "motorcycle",
+            "avoid_unpaved": bool(travel_profile == "motorcycle" or avoid_unpaved),
+            "navigation_preferences": {"avoid_ferries": avoid_ferries, "avoid_tolls": avoid_tolls, "avoid_unpaved": avoid_unpaved},
             "eta_policy": "conservative; no lane-splitting or speeding assumption",
         },
         "safety_routing": {
