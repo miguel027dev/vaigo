@@ -1,0 +1,11 @@
+TESTES V70
+
+Checklist manual aplicado ao card principal:
+- heading DESTINO / Para onde vamos?
+- textos longos de Casa/Trabalho com ellipsis
+- placeholder de busca mais claro
+- botão de recentes sem sobreposição
+- botão Mapa compacto em telas pequenas
+- layout 3 colunas nos presets e fallback 1 coluna em telas muito estreitas
+- card de busca e botão de ajustes sem invadir um ao outro
+- search-results posicionado abaixo do campo principal
