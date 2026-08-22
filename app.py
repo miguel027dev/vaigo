@@ -676,6 +676,9 @@ def init_db_with_retry():
         try:
             init_db()
             return
+        except RuntimeError:
+            # Erro de configuração (URL ausente/placeholder) não melhora com retry.
+            raise
         except Exception as exc:
             last_error = exc
             if attempt >= attempts:

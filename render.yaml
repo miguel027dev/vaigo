@@ -1,19 +1,48 @@
-# VAIGO Render Blueprint: DATABASE_URL é injetada pelo PostgreSQL gerenciado; não substitua por HOST_GERADO.
+# VAIGO — Render Blueprint
+# Deploy this repository with Render > New > Blueprint.
+# The PostgreSQL database is a separate managed resource, so user data survives
+# web-service restarts and future code deploys.
 services:
   - type: web
-    name: wesafe
+    name: vaigo
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
     healthCheckPath: /healthz
     envVars:
+      # Full URL + split libpq fields are both wired automatically. The app
+      # prefers PG* fields, which also protects against an old manual URL.
       - key: DATABASE_URL
         fromDatabase:
           name: vaigo-postgres
           property: connectionString
+      - key: PGHOST
+        fromDatabase:
+          name: vaigo-postgres
+          property: host
+      - key: PGPORT
+        fromDatabase:
+          name: vaigo-postgres
+          property: port
+      - key: PGUSER
+        fromDatabase:
+          name: vaigo-postgres
+          property: user
+      - key: PGPASSWORD
+        fromDatabase:
+          name: vaigo-postgres
+          property: password
+      - key: PGDATABASE
+        fromDatabase:
+          name: vaigo-postgres
+          property: database
       - key: DATABASE_CONNECT_TIMEOUT
         value: "10"
+      - key: DATABASE_INIT_RETRIES
+        value: "10"
+      - key: DATABASE_INIT_RETRY_DELAY
+        value: "2"
       - key: WESAFE_SECRET_KEY
         generateValue: true
       - key: MAPBOX_ACCESS_TOKEN
@@ -23,6 +52,12 @@ services:
       - key: WESAFE_ADMIN_PASSWORD
         sync: false
       - key: SPARK_OWNER_EMAIL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
         sync: false
 
 databases:
