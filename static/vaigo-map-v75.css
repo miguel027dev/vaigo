@@ -1,0 +1,118 @@
+/* ============================================================
+   VAIGO V75 — PLANNER MOBILE HARDENING
+   Fixes clipped "Para onde vamos?" card, safe-area margins,
+   collapsed-sheet layout and keyboard/small-phone behavior.
+   ============================================================ */
+:root{--planner-collapsed-h:174px}
+
+/* No theme switch anywhere in the routing UI. */
+[data-vaigo-theme-toggle]{display:none!important}
+
+/* Make every critical planner child respect its own width. */
+.sheet,.sheet *{min-width:0}
+.sheet{
+  left:max(8px,env(safe-area-inset-left))!important;
+  right:max(8px,env(safe-area-inset-right))!important;
+  bottom:max(8px,env(safe-area-inset-bottom))!important;
+  width:auto!important;
+  max-width:620px!important;
+  padding:6px 12px 12px!important;
+  border-radius:28px!important;
+  overflow:hidden!important;
+  contain:layout paint;
+}
+
+/* Search is now immediately below the title. In collapsed mode,
+   remove nonessential sections from layout instead of making them invisible. */
+.sheet.sheet-collapsed .planner-presets,
+.sheet.sheet-collapsed .planner-expand-hint,
+.sheet.sheet-collapsed .planner-expanded{display:none!important}
+.sheet.sheet-collapsed .planner-heading{padding-bottom:8px!important}
+.sheet.sheet-collapsed .planner-search-row{margin-bottom:0!important}
+
+.planner-heading{padding-left:2px!important;padding-right:2px!important;gap:8px!important}
+.planner-heading-copy{overflow:hidden!important}
+.planner-heading-copy b{overflow-wrap:anywhere!important}
+
+.planner-search-row{
+  width:100%!important;
+  grid-template-columns:minmax(0,1fr) 48px!important;
+  gap:7px!important;
+  margin:0!important;
+}
+.search-card.planner-search-card{width:100%!important;max-width:100%!important;overflow:visible!important}
+.location-row.planner-location-row{
+  width:100%!important;
+  grid-template-columns:42px minmax(0,1fr) 40px!important;
+  padding:0 5px 0 2px!important;
+}
+.location-input#destinationInput{
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  text-overflow:ellipsis!important;white-space:nowrap!important;overflow:hidden!important;
+}
+.location-input#destinationInput:focus{white-space:normal!important;text-overflow:clip!important}
+.planner-adjust-btn{width:48px!important;min-width:48px!important;max-width:48px!important}
+
+/* Search dropdown should never escape the viewport horizontally. */
+.search-results.search-results-portal{
+  width:min(520px,calc(100vw - max(16px,env(safe-area-inset-left)) - max(16px,env(safe-area-inset-right))))!important;
+  max-width:calc(100vw - 16px)!important;
+}
+
+/* Expanded content scrolls inside the card and never pushes the sheet off-screen. */
+.sheet:not(.sheet-collapsed) .planner-presets{margin-top:9px!important}
+.planner-expanded{max-height:min(42dvh,390px)!important;padding-bottom:4px!important}
+
+@media(max-width:767px){
+  .sheet{max-height:min(82dvh,760px)!important;margin:0!important}
+  .planner-heading-copy b{font-size:21px!important;line-height:1.05!important}
+  .planner-heading-copy small{font-size:8px!important}
+  .planner-weather{height:32px!important;min-width:56px!important}
+  .planner-presets{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
+  .planner-preset{min-height:56px!important;padding:7px!important;grid-template-columns:31px minmax(0,1fr)!important;gap:6px!important}
+  .planner-preset-icon{width:31px!important;height:31px!important}
+  .planner-preset b{font-size:9px!important}.planner-preset small{font-size:7px!important}
+  .planner-expand-hint{height:33px!important;margin-top:6px!important}
+  .nearby-services{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px!important}
+  .nearby-service{min-height:70px!important;padding:6px 3px!important}
+}
+
+@media(max-width:430px){
+  :root{--planner-collapsed-h:168px}
+  .sheet{left:max(6px,env(safe-area-inset-left))!important;right:max(6px,env(safe-area-inset-right))!important;bottom:max(6px,env(safe-area-inset-bottom))!important;padding:5px 10px 10px!important;border-radius:25px!important}
+  .grab.planner-grab{height:21px!important;padding:8px 0!important}
+  .grab.planner-grab:before{width:38px!important;height:4px!important}
+  .planner-heading{padding-bottom:8px!important}
+  .planner-heading-copy b{font-size:19px!important;letter-spacing:-.45px!important}
+  .planner-weather{height:30px!important;padding:0 8px!important}
+  .planner-search-row{grid-template-columns:minmax(0,1fr) 46px!important;gap:6px!important}
+  .location-row.planner-location-row{height:52px!important;min-height:52px!important;grid-template-columns:39px minmax(0,1fr) 38px!important}
+  .location-input#destinationInput{height:50px!important;font-size:13px!important;padding:0 2px!important}
+  .row-btn#quickRecentTop{width:36px!important;height:36px!important}
+  .planner-adjust-btn{width:46px!important;min-width:46px!important;height:52px!important;border-radius:17px!important}
+}
+
+@media(max-width:350px){
+  :root{--planner-collapsed-h:162px}
+  .planner-heading-copy b{font-size:18px!important}
+  .planner-weather{display:none!important}
+  .planner-search-row{grid-template-columns:minmax(0,1fr) 44px!important}
+  .planner-adjust-btn{width:44px!important;min-width:44px!important}
+  .planner-presets{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  .planner-preset{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important;padding:6px 3px!important}
+  .planner-preset small{display:none!important}
+}
+
+@media(max-height:680px) and (max-width:767px){
+  :root{--planner-collapsed-h:156px}
+  .sheet{max-height:76dvh!important}
+  .planner-heading-copy span,.planner-tip{display:none!important}
+  .planner-expanded{max-height:34dvh!important}
+}
+
+/* When the software keyboard reduces the visual viewport, keep the search card usable. */
+@media(max-height:520px) and (max-width:767px){
+  .sheet{max-height:92dvh!important;bottom:max(4px,env(safe-area-inset-bottom))!important}
+  .planner-presets,.planner-expand-hint,.planner-expanded{display:none!important}
+  .sheet:not(.sheet-collapsed){transform:none!important}
+}

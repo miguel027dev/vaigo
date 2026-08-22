@@ -6,18 +6,9 @@
   const root = document.documentElement;
   const meta = document.querySelector('meta[name="theme-color"]');
 
-  const normalize = (value) => value === 'black' ? 'black' : 'light';
+  const normalize = () => 'light';
 
-  function storedMode() {
-    try {
-      const direct = localStorage.getItem(MODE_KEY);
-      if (direct) return normalize(direct);
-      // Only carry an old theme forward when the user explicitly chose Black.
-      for (const key of LEGACY_KEYS) {
-        if (localStorage.getItem(key) === 'black') return 'black';
-      }
-    } catch (_) {}
-    return 'light';
+  function storedMode() { return 'light';
   }
 
   function updateControls(mode) {

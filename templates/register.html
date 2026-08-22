@@ -2,11 +2,10 @@
 {% block title %}Criar conta · VAIGO{% endblock %}
 {% block legacy_map_assets %}{% endblock %}
 {% block head %}{% endblock %}
-{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-entry-v63.css') }}?v=63">{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-entry-v64.css') }}?v=64">{% endblock %}
 {% block content %}
 <div class="sparker-entry" data-auth-page="register">
-  <button type="button" class="auth-theme-toggle" data-vaigo-theme-toggle aria-label="Alternar entre White e Black" aria-pressed="false"><i data-lucide="moon" width="16"></i><span data-vaigo-theme-label>Usar Black</span></button>
-  <div class="sparker-splash" aria-hidden="true"><div class="splash-center"><img class="splash-mark" src="{{ url_for('static', filename='vaigo-mark.svg') }}" alt=""><div class="splash-word">VAIGO</div></div></div>
+<div class="sparker-splash" aria-hidden="true"><div class="splash-center"><img class="splash-mark" src="{{ url_for('static', filename='vaigo-mark.svg') }}" alt=""><div class="splash-word">VAIGO</div></div></div>
 
   <main class="v63-entry-shell">
     <section class="v63-entry-panel">
@@ -27,8 +26,7 @@
 
     <section class="v63-route-stage" aria-label="Prévia da experiência VAIGO">
       <div class="v63-stage-brand"><i></i> MAPA AO VIVO · SUA ROTA</div>
-      <svg class="v63-stage-svg" viewBox="0 0 820 820" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="v63RouteGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8A82FF"/><stop offset="1" stop-color="#5B50F2"/></linearGradient></defs><path class="route-shadow" d="M46 710 C138 674 175 604 206 530 C239 449 319 456 359 388 C399 321 359 241 452 196 C531 158 635 199 748 101"/><path class="route-line" d="M46 710 C138 674 175 604 206 530 C239 449 319 456 359 388 C399 321 359 241 452 196 C531 158 635 199 748 101"/><path class="route-dash" d="M46 710 C138 674 175 604 206 530 C239 449 319 456 359 388 C399 321 359 241 452 196 C531 158 635 199 748 101"/></svg>
-      <div class="v63-stage-puck"><i data-lucide="navigation" width="16"></i></div><div class="v63-stage-pin"></div>
+      <img class="v64-entry-city" src="{{ url_for('static', filename='vaigo-entry-city-v64.webp') }}" alt="Cidade à noite com uma rota VAIGO iluminada">
       <div class="v63-stage-card route"><small>PRONTO PARA COMEÇAR</small><b>Preferências em um só lugar</b><span>Escolha transporte, rota e aparência sem complicação.</span><div class="v63-stage-meta"><em>Carro</em><em>Moto</em><em>A pé</em></div></div>
       <div class="v63-stage-card metric"><small>CONFIGURAÇÃO</small><b>1 min</b><span>ajuste rápido</span><div class="meter"><i></i></div></div>
     </section>

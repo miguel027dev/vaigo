@@ -80,17 +80,8 @@
       </details>
 
       <details class="profile-v72-detail" id="appSettings">
-        <summary><span class="profile-v72-detail-icon"><i data-lucide="settings-2" width="18"></i></span><span class="profile-v72-detail-copy"><b>Preferências do aplicativo</b><small>Aparência, idioma, mapa e unidades</small></span><i class="profile-v72-chev" data-lucide="chevron-down" width="18"></i></summary>
+        <summary><span class="profile-v72-detail-icon"><i data-lucide="settings-2" width="18"></i></span><span class="profile-v72-detail-copy"><b>Preferências do aplicativo</b><small>Idioma, mapa e unidades</small></span><i class="profile-v72-chev" data-lucide="chevron-down" width="18"></i></summary>
         <div class="profile-v72-detail-body">
-          <div class="profile-v72-subsection">
-            <div class="profile-v72-subhead"><span>APARÊNCIA</span><b>Tema do VAIGO</b></div>
-            <div class="profile-v72-theme-options" role="group" aria-label="Tema do VAIGO">
-              <button type="button" data-vaigo-theme-option="light" aria-pressed="false"><i data-lucide="sun" width="17"></i><span><b>White</b><small>Padrão claro</small></span></button>
-              <button type="button" data-vaigo-theme-option="black" aria-pressed="false"><i data-lucide="moon" width="17"></i><span><b>Black</b><small>Modo escuro</small></span></button>
-            </div>
-            <div class="profile-v72-theme-meta"><span data-theme-state>White padrão</span><span data-theme-timezone>Preferência salva neste dispositivo</span></div>
-          </div>
-
           <div class="profile-v72-grid-two profile-v72-grid-gap-top">
             <label class="profile-v72-field"><span>Idioma</span><select name="locale"><option value="pt-BR" {% if current_user['locale']=='pt-BR' %}selected{% endif %}>Português (Brasil)</option><option value="en-US" {% if current_user['locale']=='en-US' %}selected{% endif %}>English</option><option value="es-ES" {% if current_user['locale']=='es-ES' %}selected{% endif %}>Español</option></select></label>
             <label class="profile-v72-field"><span>Distância</span><select name="distance_unit"><option value="km" {% if current_user['distance_unit']!='mi' %}selected{% endif %}>Quilômetros</option><option value="mi" {% if current_user['distance_unit']=='mi' %}selected{% endif %}>Milhas</option></select></label>

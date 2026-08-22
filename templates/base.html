@@ -5,26 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#F6F7FB">
   <script>(function(){
-    function reactiveMapSelected(){
-      try{
-        var raw={{ (current_user['map_style'] if current_user and current_user['map_style'] else 'standard')|tojson }};
-        raw=String(raw||'standard').toLowerCase();
-        return !(raw==='standard'||raw==='streets');
-      }catch(_){return false;}
-    }
     try{
-      var k='vaigo.theme.mode.v60',legacy=localStorage.getItem('vaigo.theme.mode.v57')||localStorage.getItem('vaigo.theme.mode.v56')||localStorage.getItem('vaigo.theme.v55'),mode=localStorage.getItem(k)||((legacy==='black')?'black':'light');
-      // V60: White is always the default. Black is only enabled by an explicit user choice.
-      if(mode!=='black')mode='light';
-      var theme=mode==='black'?'black':'light';
-      document.documentElement.dataset.vaigoThemeMode=mode;
-      document.documentElement.dataset.vaigoTheme=theme;
-      document.documentElement.dataset.vaigoReactiveMap=reactiveMapSelected()?'1':'0';
-      document.documentElement.style.colorScheme=theme==='black'?'dark':'light';
+      document.documentElement.dataset.vaigoThemeMode='light';
+      document.documentElement.dataset.vaigoTheme='light';
+      document.documentElement.style.colorScheme='light';
+      localStorage.setItem('vaigo.theme.mode.v60','light');
+      ['vaigo.theme.mode.v57','vaigo.theme.mode.v56','vaigo.theme.v55'].forEach(function(k){localStorage.removeItem(k)});
     }catch(_){
       document.documentElement.dataset.vaigoThemeMode='light';
       document.documentElement.dataset.vaigoTheme='light';
-      document.documentElement.dataset.vaigoReactiveMap='0';
     }
   })();</script>
   <meta name="description" content="VAIGO — rotas rápidas, adaptativas e fáceis de usar.">
