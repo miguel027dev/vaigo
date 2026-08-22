@@ -589,7 +589,15 @@ html[data-vaigo-theme="black"] .immersive-choice{background:rgba(0,0,0,.50)}html
 @media(min-width:700px){.immersive-choice-card{width:min(520px,calc(100vw - 44px));padding:24px}.immersive-option{min-height:128px;padding:16px}.immersive-choice-head h3{font-size:23px}}
 </style>
 {% endblock %}
-{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v63.css') }}?v=63"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v64.css') }}?v=64"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v65.css') }}?v=65"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v69.css') }}?v=69"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v70.css') }}?v=70"><link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v71.css') }}?v=71">{% endblock %}
+{% block tail_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v63.css') }}?v=63">
+<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v64.css') }}?v=64">
+<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v65.css') }}?v=65">
+<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v69.css') }}?v=69">
+<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v70.css') }}?v=70">
+<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v71.css') }}?v=71">
+<link rel="stylesheet" href="{{ url_for('static', filename='vaigo-map-v74.css') }}?v=74">
+{% endblock %}
 {% block content %}
 <div class="ws-app" id="wsApp">
   {% if current_user and current_user['role'] == 'admin' %}<div class="sim-badge" id="simBadge"><i></i>SIMULAÇÃO ADMIN</div>{% endif %}
@@ -606,7 +614,14 @@ html[data-vaigo-theme="black"] .immersive-choice{background:rgba(0,0,0,.50)}html
   </section>
   <div class="nav-tracking" id="navTracking"><span class="nav-tracking-live"></span><div class="nav-tracking-copy"><b>Rastreando a rota</b><span id="navTrackingText">Câmera alinhada ao trajeto</span></div><strong class="nav-tracking-score" id="navTrackingSafety">—/5</strong></div>
 
-  <header class="header"><div class="header-actions"><button class="options-btn" id="optionsBtn" type="button" aria-label="Abrir opções"><i data-lucide="menu" width="19"></i></button></div></header>
+  <header class="header vaigo-map-topbar" aria-label="Barra principal do mapa">
+    <button class="map-top-action" id="optionsBtn" type="button" aria-label="Abrir menu"><i data-lucide="menu" width="20"></i></button>
+    <a class="map-brand" href="{{ url_for('index') }}" aria-label="VAIGO — voltar ao mapa">
+      <span class="map-brand-mark"><img src="{{ url_for('static', filename='vaigo-mark.svg') }}" alt=""></span>
+      <span class="map-brand-name">VAIGO</span>
+    </a>
+    <button class="map-top-action map-theme-action" type="button" data-vaigo-theme-toggle aria-label="Alternar entre White e Black" title="Alternar aparência"><i data-lucide="sun-moon" width="19"></i></button>
+  </header>
   {% if not current_user %}<button type="button" class="guest-trial-pill" id="guestTrialPill" aria-label="Ver limite de rotas grátis"><i data-lucide="route" width="14"></i><span><b id="guestTrialRemaining">{{ guest_routes_remaining }}</b> rotas grátis</span></button>{% endif %}
 
   <aside class="permission" id="locationPermission" role="alert" aria-live="assertive">
@@ -616,7 +631,7 @@ html[data-vaigo-theme="black"] .immersive-choice{background:rgba(0,0,0,.50)}html
   </aside>
 
   <section class="destination-confirm" id="destinationConfirm" aria-live="polite">
-    <div class="grab-mini"></div><small>CONFIRMAR DESTINO</small><h3 id="destinationConfirmTitle">Destino selecionado</h3><p id="destinationConfirmAddress">Confira o ponto no mapa antes de calcular a rota.</p>
+    <div class="grab-mini"></div><div class="destination-confirm-kicker"><i data-lucide="map-pin-check" width="15"></i><small>CONFIRMAR DESTINO</small></div><h3 id="destinationConfirmTitle">Destino selecionado</h3><p id="destinationConfirmAddress">Confira o local antes de calcular sua rota.</p>
     <div class="destination-confirm-actions"><button type="button" class="destination-edit" id="editDestinationBtn">Alterar</button><button type="button" class="destination-accept" id="confirmDestinationBtn">Confirmar destino</button></div>
   </section>
   <div class="status-chip" aria-hidden="true"><span class="dot"></span><span id="cityStatus">GPS</span></div>
@@ -677,7 +692,7 @@ html[data-vaigo-theme="black"] .immersive-choice{background:rgba(0,0,0,.50)}html
     <div class="grab planner-grab" id="planGrab" role="button" tabindex="0" aria-label="Puxar painel para cima ou para baixo"></div>
     <div class="welcome planner-welcome" id="welcomeState">
       <div class="planner-heading">
-        <div class="planner-heading-copy"><small>DESTINO</small><b>Para onde vamos?</b></div>
+        <div class="planner-heading-copy"><small>SEU DESTINO</small><b>Para onde você vai?</b><span>Busque um endereço, lugar ou estabelecimento.</span></div>
         <div class="chip-weather planner-weather" id="weatherPill" aria-live="polite"><i data-lucide="cloud-sun" width="15"></i><span id="weatherPillValue">--°</span></div>
       </div>
 
@@ -690,15 +705,15 @@ html[data-vaigo-theme="black"] .immersive-choice{background:rgba(0,0,0,.50)}html
       <div class="planner-search-row">
         <div class="search-card planner-search-card" aria-label="Buscar destino, endereço ou lugar">
           <div class="origin-hidden"><input id="originInput" class="location-input" autocomplete="off"><button type="button" id="locateBtn"></button><button type="button" id="swapBtn"></button></div>
-          <div class="location-row planner-location-row"><span class="planner-search-icon"><i data-lucide="search" width="18"></i></span><input id="destinationInput" class="location-input" placeholder="Digite um destino, endereço ou lugar" autocomplete="off" enterkeyhint="search"><button type="button" id="quickRecentTop" class="row-btn" aria-label="Abrir recentes"><i data-lucide="history" width="17"></i></button></div>
+          <div class="location-row planner-location-row"><span class="planner-search-icon"><i data-lucide="search" width="18"></i></span><input id="destinationInput" class="location-input" placeholder="Digite seu destino" autocomplete="off" enterkeyhint="search"><button type="button" id="quickRecentTop" class="row-btn" aria-label="Abrir recentes"><i data-lucide="history" width="17"></i></button></div>
           <div class="search-results" id="searchResults"></div>
         </div>
         <button type="button" class="planner-adjust-btn" id="prefsBtn" aria-label="Ajustes do mapa" title="Ajustes do mapa"><i data-lucide="sliders-horizontal" width="19"></i><span>Mapa</span></button>
       </div>
 
-      <button type="button" class="planner-expand-hint" id="plannerExpandToggle" aria-expanded="false"><i data-lucide="chevrons-up" width="14"></i><span>Subir card</span></button>
+      <button type="button" class="planner-expand-hint" id="plannerExpandToggle" aria-expanded="false"><i data-lucide="chevrons-up" width="14"></i><span>Ver mais opções</span></button>
       <div class="planner-expanded" id="plannerExpanded">
-        <div class="planner-section-head"><div><b>O que você precisa agora?</b><small>PERTO DE VOCÊ</small></div><span>Toque para buscar no mapa</span></div>
+        <div class="planner-section-head"><div><small>PERTO DE VOCÊ</small><b>O que você precisa agora?</b></div><span>Toque para buscar</span></div>
         <div class="nearby-services" aria-label="Serviços próximos">
           <button type="button" class="nearby-service" data-nearby-query="restaurantes"><span class="nearby-service-icon"><i data-lucide="utensils" width="18"></i></span><b>Restaurantes</b><small>Comida perto</small></button>
           <button type="button" class="nearby-service" data-nearby-query="hospitais"><span class="nearby-service-icon"><i data-lucide="hospital" width="18"></i></span><b>Hospitais</b><small>Atendimento</small></button>
@@ -709,13 +724,13 @@ html[data-vaigo-theme="black"] .immersive-choice{background:rgba(0,0,0,.50)}html
           <button type="button" class="nearby-service" data-nearby-query="bancos"><span class="nearby-service-icon"><i data-lucide="landmark" width="18"></i></span><b>Bancos</b><small>Caixas e agências</small></button>
           <button type="button" class="nearby-service" data-nearby-query="cafés"><span class="nearby-service-icon"><i data-lucide="coffee" width="18"></i></span><b>Cafés</b><small>Pausa rápida</small></button>
         </div>
-        <div class="planner-tip"><i data-lucide="sparkles" width="15"></i><span>A VAIGO usa sua posição atual e o centro do mapa para priorizar resultados realmente próximos.</span></div>
+        <div class="planner-tip"><i data-lucide="sparkles" width="15"></i><span>A VAIGO usa sua posição para ordenar resultados próximos. Você continua no controle do destino escolhido.</span></div>
       </div>
     </div>
 
     <div id="routeState" style="display:none">
       <div class="route-head"><div><h2 id="routeHeading">Rota mais segura</h2><p id="routeSubtitle">Melhor pontuação entre as alternativas disponíveis</p></div><div class="route-time"><span id="selectedDuration">—</span><small id="selectedDistance">—</small></div></div>
-      <div class="customize-route-kicker"><span>PERSONALIZAR</span><b>Escolha só como você vai</b></div>
+      <div class="customize-route-kicker"><span>COMO VOCÊ VAI?</span><b>Escolha o tipo de deslocamento</b></div>
       <div class="segment route-mode-hidden" aria-hidden="true"><button type="button" class="active safe" data-route-mode="safest"><i data-lucide="shield-check" width="14"></i>Segura</button><button type="button" class="fast" data-route-mode="fastest"><i data-lucide="zap" width="14"></i>Mais rápida</button><button type="button" class="smart" id="smartModeBtn" data-route-mode="smart"><i data-lucide="sparkles" width="14"></i><span>Equilibrada</span><em>LIVE</em></button></div>
       <div class="travel"><button type="button" class="active" data-profile="driving"><i data-lucide="car-front" width="13"></i>Carro</button><button type="button" data-profile="motorcycle"><svg class="moto-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17" r="3"></circle><circle cx="18" cy="17" r="3"></circle><path d="M9 17h5l2.3-5H12l-2 3-2.7-5H5.5M13 12l-1.8-3H14M16.3 12l2.2 1.5"></path></svg>Moto</button><button type="button" data-profile="walking"><i data-lucide="person-standing" width="13"></i>A pé</button></div>
       <div class="route-variants" id="routeVariants" aria-label="Rotas alternativas"></div>
@@ -766,6 +781,7 @@ html[data-vaigo-theme="black"] .immersive-choice{background:rgba(0,0,0,.50)}html
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='vaigo-v63-ui.js') }}?v=63"></script>
+<script src="{{ url_for('static', filename='vaigo-map-v74-ui.js') }}?v=74"></script>
 <script>
 (() => {
 const TOKEN={{ mapbox_token|tojson }}, STYLE={{ mapbox_style|tojson }}, STYLE_SET={{ mapbox_styles|tojson }}, MAP_STYLE_MODE={{ map_style_mode|tojson }}, VAIGO_BLACK_THEME=document.documentElement.dataset.vaigoTheme==='black', REACTIVE_BLACK_ALLOWED=MAP_STYLE_MODE!=='standard', LOGGED_IN={{ (current_user is not none)|tojson }}, IS_ADMIN={{ (current_user is not none and current_user['role'] == 'admin')|tojson }}, CSRF={{ csrf_token()|tojson }}, SHARED_TOKEN=new URLSearchParams(location.search).get('shared'), DISTANCE_UNIT={{ (current_user['distance_unit'] if current_user else 'km')|tojson }}, HOME_LABEL={{ (current_user['home_label'] if current_user else '')|tojson }}, WORK_LABEL={{ (current_user['work_label'] if current_user else '')|tojson }}, PRESENCE_ACTIVE={{ (current_user is not none and current_user['presence_visible'] and current_user['presence_terms_accepted_at'] and current_user['is_app_driver'] and (current_user['age'] or 0) >= 18)|tojson }};
@@ -1532,7 +1548,7 @@ function syncPlannerExpandToggle(){
   const collapsed=planSheet.classList.contains('sheet-collapsed');
   btn.setAttribute('aria-expanded',String(!collapsed));
   const label=btn.querySelector('span');
-  if(label)label.textContent=collapsed?'Subir card':'Descer card';
+  if(label)label.textContent=collapsed?'Ver mais opções':'Mostrar menos';
 }
 function togglePlannerCard(force){
   if(!planSheet)return;

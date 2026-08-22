@@ -1,0 +1,16 @@
+VALIDAÇÃO VAIGO V74
+
+[OK] app.py compila com py_compile.
+[OK] mobile_routes.py compila com py_compile.
+[OK] app.py V74 tem o mesmo SHA-256 do app.py do V73 estável.
+[OK] mobile_routes.py V74 tem o mesmo SHA-256 do V73 estável.
+[OK] JavaScript V74 passa em node --check.
+[OK] CSS V74 parseado por tinycss2 sem erro de sintaxe.
+[OK] templates/index.html e templates/base.html passam no parser Jinja.
+[OK] Nenhum ID HTML duplicado detectado no index.
+[OK] IDs esperados pelo JavaScript original continuam preservados.
+[OK] White/Black continuam usando o sistema VAIGOTheme existente.
+[OK] Nenhum arquivo SQLite foi incluído no pacote.
+
+Observação:
+A tentativa de screenshot headless com Chromium no ambiente de execução não concluiu por limitação do Chromium/DBus do container. Por isso não estou alegando teste visual pixel-perfect em navegador real. A validação feita foi estrutural, sintática e de compatibilidade dos hooks.
